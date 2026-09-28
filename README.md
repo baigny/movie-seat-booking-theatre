@@ -160,6 +160,31 @@ Observed verification: SHOW TABLES returned screens and theatres. SHOW CREATE
 TABLE screens confirmed InnoDB, utf8mb4, the primary key, uq_screens_theatre_name,
 and fk_screens_theatre with RESTRICT actions. Negative constraint tests are pending.
 
+## SQL batch 3: Theatre and screen sample rows
+
+Status: verified from user-provided MySQL output. Two INSERT statements add fictional
+sample data with explicit IDs so later examples have stable references.
+
+| theatre_id | theatre_name | address |
+| --- | --- | --- |
+| 1 | Starlight Cinema | 10 Sample Road, Bengaluru, Karnataka, India |
+| 2 | Moonlight Cinema | 20 Example Road, Chennai, Tamil Nadu, India |
+
+| screen_id | theatre_id | screen_name |
+| --- | --- | --- |
+| 1 | 1 | Screen 1 |
+| 2 | 1 | Screen 2 |
+| 3 | 2 | Screen 1 |
+
+Execute only the two INSERT statements under Batch 3 in sql/p1.sql, once, in
+the existing movie_seat_booking database. Do not source the entire script again.
+Screen 1 appears in both theatres, demonstrating that its name is unique only
+within a theatre. Verify with SELECT * FROM theatres ORDER BY theatre_id and
+SELECT * FROM screens ORDER BY screen_id; expected counts are two and three.
+
+Observed: INSERT results reported two and three affected rows respectively,
+with zero duplicates and warnings. Both SELECT results matched the rows above.
+
 ## Reference execution workflow
 
 [Ghanshyam's Airtribe database assignment](https://github.com/ghanshyamca/BookMyShow-database-design)

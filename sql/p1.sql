@@ -27,3 +27,13 @@ CREATE TABLE screens (
         REFERENCES theatres (theatre_id)
         ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB;
+
+-- Batch 3: fictional sample theatres and screens (run once).
+INSERT INTO theatres (theatre_id, theatre_name, address) VALUES
+    (1, 'Starlight Cinema', '10 Sample Road, Bengaluru, Karnataka, India'),
+    (2, 'Moonlight Cinema', '20 Example Road, Chennai, Tamil Nadu, India');
+
+INSERT INTO screens (screen_id, theatre_id, screen_name) VALUES
+    (1, 1, 'Screen 1'),
+    (2, 1, 'Screen 2'),
+    (3, 2, 'Screen 1');
