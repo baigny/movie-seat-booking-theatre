@@ -37,3 +37,25 @@ INSERT INTO screens (screen_id, theatre_id, screen_name) VALUES
     (1, 1, 'Screen 1'),
     (2, 1, 'Screen 2'),
     (3, 2, 'Screen 1');
+
+-- Batch 4: movie catalogue and physical seats.
+CREATE TABLE movies (
+    movie_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    title VARCHAR(200) NOT NULL,
+    duration_minutes SMALLINT UNSIGNED NOT NULL,
+    PRIMARY KEY (movie_id),
+    CONSTRAINT chk_movies_duration CHECK (duration_minutes > 0)
+) ENGINE=InnoDB;
+
+CREATE TABLE seats (
+    seat_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    screen_id INT UNSIGNED NOT NULL,
+    row_label VARCHAR(5) NOT NULL,
+    seat_number SMALLINT UNSIGNED NOT NULL,
+    PRIMARY KEY (seat_id),
+    CONSTRAINT uq_seats_position UNIQUE (screen_id, row_label, seat_number),
+    CONSTRAINT chk_seats_number CHECK (seat_number > 0),
+    CONSTRAINT fk_seats_screen FOREIGN KEY (screen_id)
+        REFERENCES screens (screen_id)
+        ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;

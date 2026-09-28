@@ -185,6 +185,38 @@ SELECT * FROM screens ORDER BY screen_id; expected counts are two and three.
 Observed: INSERT results reported two and three affected rows respectively,
 with zero duplicates and warnings. Both SELECT results matched the rows above.
 
+## SQL batch 4: Movies and physical seats
+
+Status: verified from user-provided SHOW CREATE TABLE output for both tables.
+Seats has the expected columns, primary key, uq_seats_position, fk_seats_screen
+with RESTRICT actions, and chk_seats_number. Movies has its expected columns,
+primary key, and chk_movies_duration. Both use InnoDB and utf8mb4.
+
+| Table | Column | Type | Rules / meaning |
+| --- | --- | --- | --- |
+| movies | movie_id | INT UNSIGNED | Auto-increment primary key |
+| movies | title | VARCHAR(200) | Required title; different movies may share a title |
+| movies | duration_minutes | SMALLINT UNSIGNED | Required positive running time |
+| seats | seat_id | INT UNSIGNED | Auto-increment primary key |
+| seats | screen_id | INT UNSIGNED | Required foreign key to screens |
+| seats | row_label | VARCHAR(5) | Required row label, for example A |
+| seats | seat_number | SMALLINT UNSIGNED | Required positive seat number |
+
+The composite unique key (screen_id, row_label, seat_number) prevents duplicate
+physical positions within a screen. Seats describe the permanent layout; their
+availability will be recorded per show, not on these physical seat rows.
+
+Normalization: movie_id determines title and duration; titles are not assumed
+unique. Both seat_id and (screen_id, row_label, seat_number) are candidate keys
+for seats. All values are atomic and all nontrivial functional dependencies have
+candidate-key determinants under these assumptions, satisfying BCNF and 1NF-3NF.
+
+Run only the two new CREATE TABLE statements under Batch 4 in sql/p1.sql.
+Do not source the whole script into the existing populated database.
+Verify using SHOW CREATE TABLE movies and SHOW CREATE TABLE seats. Expect
+InnoDB on both tables, positive-value CHECK constraints, and the seat-position
+unique key plus screen foreign key. Runtime rejection tests will follow later.
+
 ## Reference execution workflow
 
 [Ghanshyam's Airtribe database assignment](https://github.com/ghanshyamca/BookMyShow-database-design)
