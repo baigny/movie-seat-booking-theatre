@@ -18,7 +18,8 @@ consistently for this assignment.
 Execution will use local MySQL Community Server and the MySQL command-line
 client; Workbench is an optional visual editor. No signed-in online database
 platform, cloud subscription, or trial credits are required. Local database
-installation and connection verification are still pending.
+configuration and connection verification are still pending. MySQL Community
+Server 8.4.9 and its command-line client are installed locally.
 
 ## Development workflow
 
@@ -76,6 +77,19 @@ and [table metadata](https://dev.mysql.com/doc/mysql-infoschema-excerpt/8.0/en/i
 - Step 4 (execution approach): use local MySQL rather than a signed-in online
   database platform. Next, set up MySQL Community Server and its client, then
   verify the server version and InnoDB. Docker is not required.
+
+## Local installation progress
+
+- Step 5: Installed Oracle.MySQL 8.4.9 through Windows Package Manager from
+  MySQL's official download. The installer hash was verified successfully.
+- Verified the installed client with mysql.exe --version: MySQL Community
+  Server 8.4.9 for Win64.
+- No MySQL Windows service was present immediately after installation; server
+  configuration, database login, and InnoDB verification remain pending.
+- Open MySQL Configurator to complete setup: choose Development, keep port 3306
+  if available, leave opening Windows Firewall ports unchecked for local use,
+  set your own root password, and configure a Windows service.
+- Passwords belong in your local credential storage, not in these project files.
 
 ## Reference execution workflow
 
