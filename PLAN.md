@@ -11,6 +11,8 @@ Redis service, or load-test implementation.
 
 ## Deliverables
 
+- `PROGRESS.md`: live phase, table, and batch tracker, updated after every step.
+
 - `README.md`: schema documentation, relationships, sample rows, normalization
   reasoning, concurrency strategy, execution instructions, and references.
 - `sql/p1.sql`: table creation, constraints, indexes, and sample INSERT statements.

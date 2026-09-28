@@ -75,3 +75,29 @@ INSERT INTO seats (seat_id, screen_id, row_label, seat_number) VALUES
     (6, 2, 'A', 2),
     (7, 3, 'A', 1),
     (8, 3, 'A', 2);
+
+-- Batch 6: scheduled shows and booking customers.
+CREATE TABLE shows (
+    show_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    movie_id INT UNSIGNED NOT NULL,
+    screen_id INT UNSIGNED NOT NULL,
+    starts_at DATETIME NOT NULL,
+    ticket_price DECIMAL(10,2) NOT NULL,
+    PRIMARY KEY (show_id),
+    CONSTRAINT uq_shows_screen_start UNIQUE (screen_id, starts_at),
+    CONSTRAINT chk_shows_price CHECK (ticket_price >= 0),
+    CONSTRAINT fk_shows_movie FOREIGN KEY (movie_id)
+        REFERENCES movies (movie_id)
+        ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_shows_screen FOREIGN KEY (screen_id)
+        REFERENCES screens (screen_id)
+        ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE users (
+    user_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    full_name VARCHAR(150) NOT NULL,
+    email VARCHAR(254) NOT NULL,
+    PRIMARY KEY (user_id),
+    CONSTRAINT uq_users_email UNIQUE (email)
+) ENGINE=InnoDB;

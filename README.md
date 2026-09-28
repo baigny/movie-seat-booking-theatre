@@ -5,6 +5,8 @@ Repository: [baigny/data-modeling-movie-seat-booking-theatre](https://github.com
 P1/P2 submission in preparation. See [PLAN.md](PLAN.md) for the agreed scope,
 implementation steps, verification, and references.
 
+Track current status and completed commits in [PROGRESS.md](PROGRESS.md).
+
 ## Submission files
 
 - [sql/p1.sql](sql/p1.sql): database setup added; tables and sample data pending.
@@ -25,6 +27,7 @@ and its command-line client are installed locally; the MySQL84 service is runnin
 ## Development workflow
 
 - Update this README after each step, including changes and verification results.
+- Update PROGRESS.md alongside this README so completed and pending batches stay visible.
 - Add two new SQL statements per implementation commit, together with their
   README documentation. Validate, commit, and push each batch before the next.
 - Keep setup/documentation-only commits separate from SQL batches.
@@ -249,6 +252,43 @@ Observed: both INSERT statements succeeded with three and eight affected rows,
 zero duplicates, and zero warnings. SELECT results matched every sample row.
 Rerunning the earlier batch 4 CREATE TABLE statements produced error 1050 because
 the tables already existed; those errors did not affect the successful inserts.
+
+## SQL batch 6: Shows and customers
+
+Status: verified from user-provided MySQL output. Both CREATE TABLE statements
+succeeded. SHOW CREATE TABLE confirmed InnoDB, all expected columns, the
+screen/start and email unique keys, both show foreign keys with RESTRICT actions,
+and the nonnegative ticket-price CHECK constraint.
+
+| Table | Column | Type | Rules / meaning |
+| --- | --- | --- | --- |
+| shows | show_id | INT UNSIGNED | Auto-increment primary key |
+| shows | movie_id | INT UNSIGNED | Required foreign key to movies |
+| shows | screen_id | INT UNSIGNED | Required foreign key to screens |
+| shows | starts_at | DATETIME | Required start in Indian local time |
+| shows | ticket_price | DECIMAL(10,2) | Required nonnegative price in INR |
+| users | user_id | INT UNSIGNED | Auto-increment primary key |
+| users | full_name | VARCHAR(150) | Required customer name |
+| users | email | VARCHAR(254) | Required unique email |
+
+Each show references one movie and one screen. All seats in a show have the same
+listed ticket price for this assignment. Historical purchase prices will be
+stored separately on booking items. Theatre details are obtained through screens.
+The unique (screen_id, starts_at) key prevents identical starts on the same screen
+and supports P2's screen/date-range lookup. It does not prevent overlapping movie
+intervals; scheduling must check overlaps while locking the screen row.
+
+Normalization: show_id and (screen_id, starts_at) are candidate keys for shows;
+user_id and email are candidate keys for users. Email equality uses the database
+collation. All other attributes depend on a candidate key, with atomic values
+and no partial or transitive dependencies under the stated assumptions (BCNF,
+and therefore 1NF-3NF). Movie duration and theatre name are not copied into shows.
+User authentication is outside this SQL assignment, so no passwords are stored.
+
+Run only the two CREATE TABLE statements under Batch 6 in sql/p1.sql. Verify
+using SHOW CREATE TABLE shows and SHOW CREATE TABLE users. Expect InnoDB on
+both, the movie/screen foreign keys, the screen/start unique key, the price CHECK,
+and the unique user email. Runtime constraint tests are still pending.
 
 ## Reference execution workflow
 
