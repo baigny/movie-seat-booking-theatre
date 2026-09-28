@@ -101,3 +101,20 @@ CREATE TABLE users (
     PRIMARY KEY (user_id),
     CONSTRAINT uq_users_email UNIQUE (email)
 ) ENGINE=InnoDB;
+
+-- Batch 7: fixed-date sample shows and fictional customers (run once).
+INSERT INTO shows (show_id, movie_id, screen_id, starts_at, ticket_price) VALUES
+    (1, 1, 1, '2026-09-28 10:00:00', 200.00),
+    (2, 1, 1, '2026-09-28 14:00:00', 220.00),
+    (3, 2, 2, '2026-09-28 11:00:00', 180.00),
+    (4, 3, 3, '2026-09-28 10:00:00', 250.00),
+    (5, 2, 1, '2026-09-29 10:00:00', 200.00),
+    (6, 3, 1, '2026-09-30 10:00:00', 240.00),
+    (7, 1, 1, '2026-10-01 10:00:00', 200.00),
+    (8, 2, 1, '2026-10-02 10:00:00', 200.00),
+    (9, 3, 1, '2026-10-03 10:00:00', 260.00),
+    (10, 1, 1, '2026-10-04 10:00:00', 220.00);
+
+INSERT INTO users (user_id, full_name, email) VALUES
+    (1, 'Asha Rao', 'asha@example.com'),
+    (2, 'Ravi Kumar', 'ravi@example.com');

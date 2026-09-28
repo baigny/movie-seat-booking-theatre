@@ -290,6 +290,43 @@ using SHOW CREATE TABLE shows and SHOW CREATE TABLE users. Expect InnoDB on
 both, the movie/screen foreign keys, the screen/start unique key, the price CHECK,
 and the unique user email. Runtime constraint tests are still pending.
 
+## SQL batch 7: Sample shows and customers
+
+Status: batch acceptance verified from user-provided output. SELECT output
+matches both customer rows; COUNT(*) confirms two users and ten shows. Individual
+show values have not yet been checked against database output; P2 testing will
+verify the show details and theatre/date filtering.
+Two INSERT statements add ten shows and two fictional customers.
+Dates are fixed for repeatable P2 results: use selected
+date 2026-09-28 instead of relying on today's date when testing this fixture.
+Times are Indian local time and prices are INR.
+
+| show_id | movie_id | screen_id | starts_at | ticket_price |
+| --- | --- | --- | --- | --- |
+| 1 | 1 | 1 | 2026-09-28 10:00:00 | 200.00 |
+| 2 | 1 | 1 | 2026-09-28 14:00:00 | 220.00 |
+| 3 | 2 | 2 | 2026-09-28 11:00:00 | 180.00 |
+| 4 | 3 | 3 | 2026-09-28 10:00:00 | 250.00 |
+| 5 | 2 | 1 | 2026-09-29 10:00:00 | 200.00 |
+| 6 | 3 | 1 | 2026-09-30 10:00:00 | 240.00 |
+| 7 | 1 | 1 | 2026-10-01 10:00:00 | 200.00 |
+| 8 | 2 | 1 | 2026-10-02 10:00:00 | 200.00 |
+| 9 | 3 | 1 | 2026-10-03 10:00:00 | 260.00 |
+| 10 | 1 | 1 | 2026-10-04 10:00:00 | 220.00 |
+
+| user_id | full_name | email |
+| --- | --- | --- |
+| 1 | Asha Rao | asha@example.com |
+| 2 | Ravi Kumar | ravi@example.com |
+
+The first theatre has multiple movies and showtimes on the first date, plus
+shows on each of the following six dates. The second theatre has its own show
+at the same time as a first-theatre show, testing theatre isolation in P2.
+
+Run only the two INSERT statements under Batch 7. Verify with SELECT * FROM
+shows ORDER BY show_id and SELECT * FROM users ORDER BY user_id; expect ten
+shows and two users. Do not rerun the entire script against the populated database.
+
 ## Reference execution workflow
 
 [Ghanshyam's Airtribe database assignment](https://github.com/ghanshyamca/BookMyShow-database-design)
