@@ -210,3 +210,28 @@ CREATE TABLE payment_events (
         REFERENCES bookings (booking_id)
         ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB;
+
+-- Batch 10: fixed historical booking and inventory for all sample shows (run once).
+-- Batch 11 will supply the booking's two items and successful payment event.
+INSERT INTO bookings (
+    booking_id, user_id, screen_id, starts_at, booking_reference,
+    status, created_at, hold_expires_at, total_amount
+) VALUES (
+    1, 1, 1, '2026-09-28 10:00:00', '00000000-0000-4000-8000-000000000001',
+    'confirmed', '2026-09-27 18:00:00', '2026-09-27 18:10:00', 400.00
+);
+
+INSERT INTO show_seats (
+    screen_id, starts_at, row_label, seat_number, status, booking_id
+)
+SELECT sh.screen_id, sh.starts_at, st.row_label, st.seat_number,
+       CASE WHEN b.booking_id IS NOT NULL THEN 'sold' ELSE 'available' END,
+       b.booking_id
+FROM shows AS sh
+JOIN seats AS st ON st.screen_id = sh.screen_id
+LEFT JOIN bookings AS b
+    ON b.booking_id = 1
+    AND b.screen_id = sh.screen_id
+    AND b.starts_at = sh.starts_at
+    AND st.row_label = 'A'
+    AND st.seat_number IN (1, 2);

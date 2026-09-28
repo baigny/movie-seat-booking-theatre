@@ -8,7 +8,8 @@ implementation steps, verification, and references.
 ## Submission files
 
 - [sql/p1.sql](sql/p1.sql): all ten table definitions verified from user-provided
-  MySQL output through batch 9. Sample data currently covers the first six tables.
+  MySQL output through batch 9. Sample data is verified for the first six tables;
+  batch 10 booking and inventory sample data is also verified.
 - [sql/p2.sql](sql/p2.sql): shows by theatre and date (pending).
 
 ## Target database
@@ -393,6 +394,47 @@ Run only the two CREATE TABLE statements under Batch 9 in the existing database.
 Do not source all of p1.sql again. Verify with SHOW TABLES, SHOW CREATE TABLE for
 both new tables, and COUNT(*) for each. Expect ten tables and zero rows in each
 new table. Sample rows and negative constraint tests follow in later batches.
+
+## SQL batch 10: Sample booking and show-seat inventory
+
+Status: verified from user-provided MySQL output. The booking INSERT affected
+one row; the inventory INSERT affected 36 rows with zero duplicates and warnings.
+The booking SELECT matched every expected field. Inventory checks returned
+36 rows: two sold seats (A1 and A2 for booking 1 on screen 1 at
+2026-09-28 10:00:00) and 34 available seats with NULL booking_id. Grouped
+counts matched all ten shows: four seats for each of screen 1's eight shows,
+and two seats each for the shows on screens 2 and 3. Runtime constraint and
+concurrency tests remain pending.
+Adds two INSERT statements, to be run once after batch 9.
+
+The first creates booking 1 for Asha Rao (user 1), screen 1 at
+2026-09-28 10:00:00, with reference 00000000-0000-4000-8000-000000000001.
+It is a fixed historical confirmed booking for seats A1 and A2, totaling INR
+400.00 (two seats at INR 200.00). created_at is 2026-09-27 18:00:00 and the
+retained hold deadline is 2026-09-27 18:10:00. The deadline does not expire an
+already confirmed booking. This fixture does not demonstrate live confirmation;
+batch 11 will add its historical booking items and successful payment event.
+Until that batch, the sample booking's audit data is incomplete.
+
+The second INSERT joins shows to physical seats on screen_id, generating one
+inventory row for each seat on each show's screen. A left join to booking 1
+marks only its matching show and seats A1/A2 as sold, owned by booking 1. All
+other inventory is available with NULL booking_id. This seeds the assignment
+fixture; live allocation must use the locking transactions still to be added.
+
+Expected results with the unchanged earlier fixtures:
+
+| Check | Expected |
+| --- | --- |
+| bookings rows | 1 |
+| show_seats rows | 36 |
+| sold inventory | 2, both for booking 1 on screen 1 at 2026-09-28 10:00:00 |
+| available inventory | 34, all with NULL booking_id |
+| inventory per show | 4 for each of screen 1's eight shows; 2 each for screens 2 and 3 |
+
+Run only Batch 10's two INSERT statements in movie_seat_booking; do not source
+the full p1.sql or rerun successful inserts. Verify the booking row, total and
+status counts, sold seat details, and inventory counts grouped by show.
 
 ## Reference execution workflow
 
