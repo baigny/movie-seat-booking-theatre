@@ -7,8 +7,8 @@ implementation steps, verification, and references.
 
 ## Submission files
 
-- [sql/p1.sql](sql/p1.sql): ten table definitions prepared; batches 1-8 verified,
-  batch 9 execution pending. Sample data currently covers the first six tables.
+- [sql/p1.sql](sql/p1.sql): all ten table definitions verified from user-provided
+  MySQL output through batch 9. Sample data currently covers the first six tables.
 - [sql/p2.sql](sql/p2.sql): shows by theatre and date (pending).
 
 ## Target database
@@ -332,7 +332,13 @@ events.
 
 ## SQL batch 9: Booking items and payment events
 
-Status: prepared locally; MySQL execution and runtime verification pending.
+Status: table definitions and empty row counts verified from user-provided MySQL
+output. SHOW TABLES returned all ten tables. SHOW CREATE TABLE confirmed both
+new tables' columns, defaults, primary keys, foreign keys with RESTRICT actions,
+and CHECK constraints, plus the payment provider/event unique key and booking
+index. Both tables use InnoDB and utf8mb4; payment identifiers use ascii_bin as
+specified. COUNT(*) returned zero for each table. Runtime constraint rejection,
+payment idempotency, and concurrency tests remain pending.
 Adds exactly two CREATE TABLE statements to sql/p1.sql.
 
 | Table | Column | Type | Rules / meaning |
