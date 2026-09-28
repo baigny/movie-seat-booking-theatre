@@ -113,8 +113,52 @@ SELECT DATABASE();
 
 Verified result from the user's MySQL session: SOURCE completed without a
 reported error, and SELECT DATABASE() returned movie_seat_booking.
-The current script contains exactly two executable SQL statements. Table
-creation and sample data are still pending.
+The verified batch added two executable statements. Subsequent batches append
+new statements to the script.
+
+## SQL batch 2: Theatres and screens
+
+Status: verified from the user's MySQL session output. Adds two CREATE TABLE statements, both
+explicitly using InnoDB. One theatre can have many screens.
+
+| Table | Column | Type | Rules / meaning |
+| --- | --- | --- | --- |
+| theatres | theatre_id | INT UNSIGNED | Auto-increment primary key |
+| theatres | theatre_name | VARCHAR(150) | Required name; names can repeat at different locations |
+| theatres | address | VARCHAR(500) | Required address, treated as one display value |
+| screens | screen_id | INT UNSIGNED | Auto-increment primary key |
+| screens | theatre_id | INT UNSIGNED | Required foreign key to theatres |
+| screens | screen_name | VARCHAR(50) | Required; unique within its theatre |
+
+The theatre foreign key prevents orphan screens and restricts deleting a theatre
+that still has screens. The unique key (theatre_id, screen_name) also supports
+looking up a theatre's screens. Counts of screens are computed rather than stored.
+
+Normalization assumptions: a theatre name or address alone does not uniquely
+identify a theatre. For theatres, theatre_id determines all attributes. For
+screens, both screen_id and (theatre_id, screen_name) are candidate keys and
+determine all attributes. Values are atomic, with no partial or transitive
+dependencies under these assumptions; both tables satisfy 1NF through BCNF.
+
+For this step, run sql/p1.sql once from the mysql prompt using SOURCE as above.
+The database setup can repeat, but CREATE TABLE statements intentionally fail if
+the tables already exist; do not repeatedly source the file after success.
+For future batches, execute only the newly added statements against this database.
+
+Verify this batch with:
+
+```sql
+SHOW TABLES;
+SHOW CREATE TABLE screens;
+```
+
+Expected tables: theatres and screens. The screens definition should include
+ENGINE=InnoDB, its primary key, the composite unique key, and the theatre foreign
+key. Sample INSERT statements will be supplied in later batches.
+
+Observed verification: SHOW TABLES returned screens and theatres. SHOW CREATE
+TABLE screens confirmed InnoDB, utf8mb4, the primary key, uq_screens_theatre_name,
+and fk_screens_theatre with RESTRICT actions. Negative constraint tests are pending.
 
 ## Reference execution workflow
 
