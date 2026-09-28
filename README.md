@@ -217,6 +217,39 @@ Verify using SHOW CREATE TABLE movies and SHOW CREATE TABLE seats. Expect
 InnoDB on both tables, positive-value CHECK constraints, and the seat-position
 unique key plus screen foreign key. Runtime rejection tests will follow later.
 
+## SQL batch 5: Movie and seat sample rows
+
+Status: verified from user-provided MySQL output. Adds two INSERT statements with fictional
+movie details and a deliberately small seating layout for reproducible examples.
+
+| movie_id | title | duration_minutes |
+| --- | --- | --- |
+| 1 | Journey to the Stars | 120 |
+| 2 | The Last Train | 105 |
+| 3 | Ocean of Dreams | 135 |
+
+| seat_id | screen_id | row_label | seat_number |
+| --- | --- | --- | --- |
+| 1 | 1 | A | 1 |
+| 2 | 1 | A | 2 |
+| 3 | 1 | B | 1 |
+| 4 | 1 | B | 2 |
+| 5 | 2 | A | 1 |
+| 6 | 2 | A | 2 |
+| 7 | 3 | A | 1 |
+| 8 | 3 | A | 2 |
+
+Execute only the two INSERT statements under Batch 5 in sql/p1.sql, once, in
+movie_seat_booking. Verify with SELECT * FROM movies ORDER BY movie_id and
+SELECT * FROM seats ORDER BY seat_id; expect three movies and eight seats.
+Seats such as A1 may repeat on different screens, and seat number 1 may repeat
+on different rows within a screen. The full screen/row/number position is unique.
+
+Observed: both INSERT statements succeeded with three and eight affected rows,
+zero duplicates, and zero warnings. SELECT results matched every sample row.
+Rerunning the earlier batch 4 CREATE TABLE statements produced error 1050 because
+the tables already existed; those errors did not affect the successful inserts.
+
 ## Reference execution workflow
 
 [Ghanshyam's Airtribe database assignment](https://github.com/ghanshyamca/BookMyShow-database-design)

@@ -59,3 +59,19 @@ CREATE TABLE seats (
         REFERENCES screens (screen_id)
         ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB;
+
+-- Batch 5: fictional movies and a small demonstration seating layout.
+INSERT INTO movies (movie_id, title, duration_minutes) VALUES
+    (1, 'Journey to the Stars', 120),
+    (2, 'The Last Train', 105),
+    (3, 'Ocean of Dreams', 135);
+
+INSERT INTO seats (seat_id, screen_id, row_label, seat_number) VALUES
+    (1, 1, 'A', 1),
+    (2, 1, 'A', 2),
+    (3, 1, 'B', 1),
+    (4, 1, 'B', 2),
+    (5, 2, 'A', 1),
+    (6, 2, 'A', 2),
+    (7, 3, 'A', 1),
+    (8, 3, 'A', 2);
