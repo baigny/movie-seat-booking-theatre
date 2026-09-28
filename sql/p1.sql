@@ -171,3 +171,42 @@ CREATE TABLE show_seats (
         REFERENCES bookings (booking_id, screen_id, starts_at)
         ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB;
+
+-- Batch 9: historical booking items and payment event processing.
+CREATE TABLE booking_seats (
+    booking_id INT UNSIGNED NOT NULL,
+    row_label VARCHAR(5) NOT NULL,
+    seat_number SMALLINT UNSIGNED NOT NULL,
+    purchase_price DECIMAL(10,2) NOT NULL,
+    PRIMARY KEY (booking_id, row_label, seat_number),
+    CONSTRAINT chk_booking_seats_number CHECK (seat_number > 0),
+    CONSTRAINT chk_booking_seats_price CHECK (purchase_price >= 0),
+    CONSTRAINT fk_booking_seats_booking FOREIGN KEY (booking_id)
+        REFERENCES bookings (booking_id)
+        ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE payment_events (
+    payment_event_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    provider VARCHAR(50) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    provider_event_id VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    booking_id INT UNSIGNED NOT NULL,
+    event_type ENUM('payment_succeeded', 'payment_failed', 'refund_succeeded')
+        NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    processing_status ENUM('pending', 'applied', 'ignored', 'refund_required')
+        NOT NULL DEFAULT 'pending',
+    received_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    processed_at DATETIME NULL,
+    PRIMARY KEY (payment_event_id),
+    CONSTRAINT uq_payment_events_provider_event UNIQUE (provider, provider_event_id),
+    KEY ix_payment_events_booking (booking_id, received_at),
+    CONSTRAINT chk_payment_events_amount CHECK (amount >= 0),
+    CONSTRAINT chk_payment_events_processed CHECK (
+        (processing_status = 'pending' AND processed_at IS NULL)
+        OR (processing_status <> 'pending' AND processed_at IS NOT NULL)
+    ),
+    CONSTRAINT fk_payment_events_booking FOREIGN KEY (booking_id)
+        REFERENCES bookings (booking_id)
+        ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;

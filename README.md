@@ -7,7 +7,8 @@ implementation steps, verification, and references.
 
 ## Submission files
 
-- [sql/p1.sql](sql/p1.sql): database setup added; tables and sample data pending.
+- [sql/p1.sql](sql/p1.sql): ten table definitions prepared; batches 1-8 verified,
+  batch 9 execution pending. Sample data currently covers the first six tables.
 - [sql/p2.sql](sql/p2.sql): shows by theatre and date (pending).
 
 ## Target database
@@ -328,6 +329,64 @@ Run only the two CREATE TABLE statements under Batch 8 after batch 7. Verify
 using `SHOW CREATE TABLE bookings`, `SHOW CREATE TABLE show_seats`, and the
 table counts. The next batches add sample inventory, booking items, and payment
 events.
+
+## SQL batch 9: Booking items and payment events
+
+Status: prepared locally; MySQL execution and runtime verification pending.
+Adds exactly two CREATE TABLE statements to sql/p1.sql.
+
+| Table | Column | Type | Rules / meaning |
+| --- | --- | --- | --- |
+| booking_seats | booking_id | INT UNSIGNED | Required foreign key to bookings; part of primary key |
+| booking_seats | row_label | VARCHAR(5) | Seat row within the booking's screen; part of primary key |
+| booking_seats | seat_number | SMALLINT UNSIGNED | Positive seat number; part of primary key |
+| booking_seats | purchase_price | DECIMAL(10,2) | Nonnegative historical item price in INR |
+| payment_events | payment_event_id | BIGINT UNSIGNED | Auto-increment primary key |
+| payment_events | provider | VARCHAR(50) | Required ASCII provider identifier |
+| payment_events | provider_event_id | VARCHAR(191) | Required ASCII event identifier; unique together with provider |
+| payment_events | booking_id | INT UNSIGNED | Required foreign key to bookings |
+| payment_events | event_type | ENUM | payment_succeeded, payment_failed, or refund_succeeded |
+| payment_events | amount | DECIMAL(10,2) | Nonnegative event amount in INR |
+| payment_events | processing_status | ENUM | pending (default), applied, ignored, or refund_required |
+| payment_events | received_at | DATETIME | Database timestamp on receipt |
+| payment_events | processed_at | DATETIME | NULL while pending; required after processing |
+
+One booking has many historical seat items and may have many payment events.
+Both tables use InnoDB and restrict deletion or key changes of referenced
+bookings. The booking item primary key prevents repeating a seat in one booking.
+The same seat can appear in a later booking after cancellation or expiry;
+show_seats remains the authority for current ownership.
+
+The booking determines its screen and show, so booking_seats does not duplicate
+screen_id or starts_at. Its booking foreign key alone does not validate a seat
+position. The booking transaction must join the booking to matching show_seats,
+lock those inventory rows, validate ownership, and insert items from those rows
+in the same transaction. It must also reconcile total_amount with item prices.
+These transaction examples and their runtime tests are still pending.
+
+Payment provider and event identifiers use case-sensitive ASCII comparison;
+the assignment assumes provider IDs fit these lengths and contain ASCII only.
+The unique pair prevents storing the same provider event twice. It does not
+alone make payment handling idempotent: event processing must lock the booking,
+validate amount, expiry, and current inventory ownership, then update booking,
+inventory, and event outcome atomically. Distinct success events must not confirm
+an already confirmed booking again. Late successful payments are recorded as
+refund_required without reclaiming reassigned seats. External refunds and their
+retries require an idempotent provider operation; this table records outcomes.
+
+Normalization: (booking_id, row_label, seat_number) is the booking item candidate
+key; purchase_price depends on the complete key and is a historical snapshot,
+not a copy that follows the current show price. payment_event_id and
+(provider, provider_event_id) are payment event candidate keys; each determines
+the event's booking, type, amount, processing state, and timestamps. No other
+functional dependencies are assumed. Both tables have atomic values, no partial
+or transitive dependencies on candidate keys, and only candidate-key determinants
+for nontrivial dependencies (1NF, 2NF, 3NF, and BCNF).
+
+Run only the two CREATE TABLE statements under Batch 9 in the existing database.
+Do not source all of p1.sql again. Verify with SHOW TABLES, SHOW CREATE TABLE for
+both new tables, and COUNT(*) for each. Expect ten tables and zero rows in each
+new table. Sample rows and negative constraint tests follow in later batches.
 
 ## Reference execution workflow
 
