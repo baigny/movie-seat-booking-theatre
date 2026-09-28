@@ -1,7 +1,7 @@
 # Project Progress Tracker
 
 Current phase: **P1 - schema and sample data**.
-Current action: **commit batch 7; next design the remaining booking tables**.
+Current action: **batch 7 pushed; next prepare batch 8 booking tables**.
 
 ## Overall progress
 
@@ -50,11 +50,11 @@ user-supplied MySQL output; git diff checks run locally.
 | 4 | CREATE movies + CREATE seats | Verified and pushed | b362be6 |
 | 5 | INSERT movies + INSERT seats | Verified and pushed | 3c2320f |
 | 6 | CREATE shows + CREATE users | Verified and pushed | 1d20609 |
-| 7 | INSERT shows + INSERT users | User rows and both counts verified; committing next | Pending |
+| 7 | INSERT shows + INSERT users | User rows and both counts verified; pushed | 1e4161e |
 
 ## Remaining sequence
 
-1. Commit and push batch 7; verify individual show values during P2 testing.
+1. Prepare batch 8; verify individual sample show values during P2 testing.
 2. Define and populate the remaining inventory, booking, and payment tables in
    dependency order, retaining two new SQL statements per implementation commit.
 3. Add executable consistency/transaction examples and document hold expiry,
