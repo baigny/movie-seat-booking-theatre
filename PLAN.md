@@ -11,8 +11,6 @@ Redis service, or load-test implementation.
 
 ## Deliverables
 
-- `PROGRESS.md`: live phase, table, and batch tracker, updated after every step.
-
 - `README.md`: schema documentation, relationships, sample rows, normalization
   reasoning, concurrency strategy, execution instructions, and references.
 - `sql/p1.sql`: table creation, constraints, indexes, and sample INSERT statements.
@@ -106,13 +104,3 @@ Redis service, or load-test implementation.
 - [Similar P1/P2 assignment](https://github.com/adityasinghbaghel/BookMyShow-design):
   useful document structure, but its SQL contains mismatched INSERT columns and
   placeholder ellipses. Write and validate our SQL independently.
-
-## Progress
-
-- [x] Review the assignment and find GitHub references.
-- [x] Confirm P1/P2-only scope.
-- [x] Save this plan and create initial submission files.
-- [ ] Implement and document P1.
-- [ ] Implement P2 and expected output.
-- [ ] Run MySQL verification and record results.
-- [ ] Submit a GitHub pull request.

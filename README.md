@@ -5,8 +5,6 @@ Repository: [baigny/data-modeling-movie-seat-booking-theatre](https://github.com
 P1/P2 submission in preparation. See [PLAN.md](PLAN.md) for the agreed scope,
 implementation steps, verification, and references.
 
-Track current status and completed commits in [PROGRESS.md](PROGRESS.md).
-
 ## Submission files
 
 - [sql/p1.sql](sql/p1.sql): database setup added; tables and sample data pending.
@@ -27,7 +25,6 @@ and its command-line client are installed locally; the MySQL84 service is runnin
 ## Development workflow
 
 - Update this README after each step, including changes and verification results.
-- Update PROGRESS.md alongside this README so completed and pending batches stay visible.
 - Add two new SQL statements per implementation commit, together with their
   README documentation. Validate, commit, and push each batch before the next.
 - Keep setup/documentation-only commits separate from SQL batches.
@@ -64,37 +61,6 @@ The schema will explicitly specify ENGINE=InnoDB on each CREATE TABLE statement.
 
 References: [engine availability](https://dev.mysql.com/doc/refman/8.4/en/innodb-check-availability.html)
 and [table metadata](https://dev.mysql.com/doc/mysql-infoschema-excerpt/8.0/en/information-schema-tables-table.html).
-
-## Progress
-
-- Plan created; SQL batch 1 (database setup) verified from user-provided output.
-- Step 1: GitHub repository created and confirmed empty before initial upload.
-- Step 2: Initial setup contains the README, project plan, and SQL placeholders.
-  SQL implementation will begin on `feature/p1-p2-sql` after this baseline commit.
-- Incremental README updates and two-statement SQL batches agreed.
-- Initial environment checks did not find mysql on PATH; use the installed
-  client's full path if the shell still cannot resolve mysql.
-- Step 3 (environment check): no MySQL command, matching Windows service, or
-  installation in the standard MySQL Program Files locations was found.
-  Docker CLI is installed, but its Linux engine is not running.
-- Step 4 (execution approach): use local MySQL rather than a signed-in online
-  database platform. Next, set up MySQL Community Server and its client, then
-  verify the server version and InnoDB. Docker is not required.
-
-## Local installation progress
-
-- Step 5: Installed Oracle.MySQL 8.4.9 through Windows Package Manager from
-  MySQL's official download. The installer hash was verified successfully.
-- Verified the installed client with mysql.exe --version: MySQL Community
-  Server 8.4.9 for Win64.
-- No MySQL Windows service was present immediately after installation. A later
-  check confirmed MySQL84 is Running and the server responds on localhost.
-- An unauthenticated mysqladmin probe received Access denied; this confirms
-  a server response, not successful login or InnoDB verification.
-- Step 6: The user connected successfully and supplied SELECT VERSION() and
-  SHOW ENGINES output. Server version: 8.4.9; InnoDB: DEFAULT; Transactions,
-  XA, and Savepoints: YES. These results are user-provided execution evidence.
-- Passwords belong in your local credential storage, not in these project files.
 
 ## SQL batch 1: Create and select the database
 
@@ -326,6 +292,42 @@ at the same time as a first-theatre show, testing theatre isolation in P2.
 Run only the two INSERT statements under Batch 7. Verify with SELECT * FROM
 shows ORDER BY show_id and SELECT * FROM users ORDER BY user_id; expect ten
 shows and two users. Do not rerun the entire script against the populated database.
+
+## SQL batch 8: Bookings and show-seat inventory
+
+Status: table creation and definitions verified from user-provided MySQL output.
+Both CREATE TABLE statements succeeded. SHOW TABLES returned eight tables;
+SHOW CREATE TABLE confirmed the expected columns, defaults, primary and unique
+keys, indexes, foreign keys with RESTRICT actions, and CHECK constraints. Both
+tables use InnoDB and utf8mb4. COUNT(*) returned zero for each new table, as
+expected before seeding. Runtime constraint rejection and concurrency tests
+remain pending.
+
+Adds two InnoDB tables. `bookings` records the customer, scheduled show,
+reference, lifecycle status, hold deadline, and amount. The show is referenced
+by its candidate key `(screen_id, starts_at)`. A held booking must have a
+deadline; transaction examples below use the database clock and retain the
+deadline when a booking changes status.
+
+`show_seats` stores one row per show and physical seat. Its composite primary
+key prevents duplicate inventory; foreign keys require both a real show and a
+seat on that show's screen. `booking_id` is nullable for available inventory;
+held or sold inventory must reference a booking for the same show. The status
+index supports finding and locking requested seats in a deterministic order.
+
+Candidate keys: `booking_id` and `booking_reference` identify a booking;
+`(booking_id, screen_id, starts_at)` is an alternate composite key for enforcing
+show-consistent allocations. The show-seat primary key identifies an inventory
+row. In bookings, each non-key attribute depends on a candidate key, with no
+partial or transitive dependencies. In show_seats, availability and booking
+allocation depend on the full show/seat key. Values are atomic and no
+nontrivial dependency has a non-key determinant; both tables satisfy 1NF through
+BCNF under these assumptions.
+
+Run only the two CREATE TABLE statements under Batch 8 after batch 7. Verify
+using `SHOW CREATE TABLE bookings`, `SHOW CREATE TABLE show_seats`, and the
+table counts. The next batches add sample inventory, booking items, and payment
+events.
 
 ## Reference execution workflow
 

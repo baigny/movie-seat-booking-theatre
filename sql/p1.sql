@@ -118,3 +118,56 @@ INSERT INTO shows (show_id, movie_id, screen_id, starts_at, ticket_price) VALUES
 INSERT INTO users (user_id, full_name, email) VALUES
     (1, 'Asha Rao', 'asha@example.com'),
     (2, 'Ravi Kumar', 'ravi@example.com');
+
+-- Batch 8: bookings and per-show seat inventory.
+CREATE TABLE bookings (
+    booking_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED NOT NULL,
+    screen_id INT UNSIGNED NOT NULL,
+    starts_at DATETIME NOT NULL,
+    booking_reference CHAR(36) NOT NULL,
+    status ENUM('held', 'confirmed', 'expired', 'cancelled', 'payment_failed')
+        NOT NULL DEFAULT 'held',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    hold_expires_at DATETIME NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    PRIMARY KEY (booking_id),
+    CONSTRAINT uq_bookings_reference UNIQUE (booking_reference),
+    CONSTRAINT uq_bookings_id_show UNIQUE (booking_id, screen_id, starts_at),
+    KEY ix_bookings_user_created (user_id, created_at),
+    CONSTRAINT chk_bookings_amount CHECK (total_amount >= 0),
+    CONSTRAINT chk_bookings_hold_expiry CHECK (
+        status <> 'held' OR hold_expires_at IS NOT NULL
+    ),
+    CONSTRAINT fk_bookings_user FOREIGN KEY (user_id)
+        REFERENCES users (user_id)
+        ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_bookings_show FOREIGN KEY (screen_id, starts_at)
+        REFERENCES shows (screen_id, starts_at)
+        ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE show_seats (
+    screen_id INT UNSIGNED NOT NULL,
+    starts_at DATETIME NOT NULL,
+    row_label VARCHAR(5) NOT NULL,
+    seat_number SMALLINT UNSIGNED NOT NULL,
+    status ENUM('available', 'held', 'sold') NOT NULL DEFAULT 'available',
+    booking_id INT UNSIGNED NULL,
+    PRIMARY KEY (screen_id, starts_at, row_label, seat_number),
+    KEY ix_show_seats_status (screen_id, starts_at, status, row_label, seat_number),
+    KEY ix_show_seats_booking (booking_id, screen_id, starts_at),
+    CONSTRAINT chk_show_seats_allocation CHECK (
+        (status = 'available' AND booking_id IS NULL)
+        OR (status IN ('held', 'sold') AND booking_id IS NOT NULL)
+    ),
+    CONSTRAINT fk_show_seats_show FOREIGN KEY (screen_id, starts_at)
+        REFERENCES shows (screen_id, starts_at)
+        ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_show_seats_seat FOREIGN KEY (screen_id, row_label, seat_number)
+        REFERENCES seats (screen_id, row_label, seat_number)
+        ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_show_seats_booking FOREIGN KEY (booking_id, screen_id, starts_at)
+        REFERENCES bookings (booking_id, screen_id, starts_at)
+        ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;
