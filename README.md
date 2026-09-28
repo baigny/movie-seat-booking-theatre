@@ -7,7 +7,7 @@ implementation steps, verification, and references.
 
 ## Submission files
 
-- [sql/p1.sql](sql/p1.sql): schema and sample data (pending).
+- [sql/p1.sql](sql/p1.sql): database setup added; tables and sample data pending.
 - [sql/p2.sql](sql/p2.sql): shows by theatre and date (pending).
 
 ## Target database
@@ -17,8 +17,9 @@ consistently for this assignment.
 
 Execution will use local MySQL Community Server and the MySQL command-line
 client; Workbench is an optional visual editor. No signed-in online database
-platform, cloud subscription, or trial credits are required. Local database
-login and InnoDB verification are still pending. MySQL Community Server 8.4.9
+platform, cloud subscription, or trial credits are required. The user's MySQL
+session output confirms successful login and InnoDB as DEFAULT on server 8.4.9.
+MySQL Community Server 8.4.9
 and its command-line client are installed locally; the MySQL84 service is running.
 
 ## Development workflow
@@ -63,14 +64,13 @@ and [table metadata](https://dev.mysql.com/doc/mysql-infoschema-excerpt/8.0/en/i
 
 ## Progress
 
-- Plan and SQL placeholders created; schema implementation is pending.
+- Plan created; SQL batch 1 (database setup) verified from user-provided output.
 - Step 1: GitHub repository created and confirmed empty before initial upload.
 - Step 2: Initial setup contains the README, project plan, and SQL placeholders.
   SQL implementation will begin on `feature/p1-p2-sql` after this baseline commit.
 - Incremental README updates and two-statement SQL batches agreed.
-- The mysql command was not found on the current shell PATH. This does not
-  establish whether MySQL Server or Workbench is installed.
-- Database checks have not yet been executed against a running MySQL instance.
+- Initial environment checks did not find mysql on PATH; use the installed
+  client's full path if the shell still cannot resolve mysql.
 - Step 3 (environment check): no MySQL command, matching Windows service, or
   installation in the standard MySQL Program Files locations was found.
   Docker CLI is installed, but its Linux engine is not running.
@@ -88,8 +88,33 @@ and [table metadata](https://dev.mysql.com/doc/mysql-infoschema-excerpt/8.0/en/i
   check confirmed MySQL84 is Running and the server responds on localhost.
 - An unauthenticated mysqladmin probe received Access denied; this confirms
   a server response, not successful login or InnoDB verification.
-- Next, connect using your configured database credentials and run SHOW ENGINES.
+- Step 6: The user connected successfully and supplied SELECT VERSION() and
+  SHOW ENGINES output. Server version: 8.4.9; InnoDB: DEFAULT; Transactions,
+  XA, and Savepoints: YES. These results are user-provided execution evidence.
 - Passwords belong in your local credential storage, not in these project files.
+
+## SQL batch 1: Create and select the database
+
+The first two statements in sql/p1.sql create movie_seat_booking with utf8mb4
+and select it for subsequent commands. IF NOT EXISTS avoids recreating an
+existing database; it does not modify an existing database's configuration.
+
+From the connected mysql prompt, execute:
+
+```text
+SOURCE C:/data-modelling-movie-theatre/sql/p1.sql;
+```
+
+Then verify the selected database:
+
+```sql
+SELECT DATABASE();
+```
+
+Verified result from the user's MySQL session: SOURCE completed without a
+reported error, and SELECT DATABASE() returned movie_seat_booking.
+The current script contains exactly two executable SQL statements. Table
+creation and sample data are still pending.
 
 ## Reference execution workflow
 
