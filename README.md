@@ -15,6 +15,11 @@ implementation steps, verification, and references.
 MySQL 8.0.16 or newer with InnoDB. Dates and showtimes use Indian local time
 consistently for this assignment.
 
+Execution will use local MySQL Community Server and the MySQL command-line
+client; Workbench is an optional visual editor. No signed-in online database
+platform, cloud subscription, or trial credits are required. Local database
+installation and connection verification are still pending.
+
 ## Development workflow
 
 - Update this README after each step, including changes and verification results.
@@ -65,6 +70,19 @@ and [table metadata](https://dev.mysql.com/doc/mysql-infoschema-excerpt/8.0/en/i
 - The mysql command was not found on the current shell PATH. This does not
   establish whether MySQL Server or Workbench is installed.
 - Database checks have not yet been executed against a running MySQL instance.
+- Step 3 (environment check): no MySQL command, matching Windows service, or
+  installation in the standard MySQL Program Files locations was found.
+  Docker CLI is installed, but its Linux engine is not running.
+- Step 4 (execution approach): use local MySQL rather than a signed-in online
+  database platform. Next, set up MySQL Community Server and its client, then
+  verify the server version and InnoDB. Docker is not required.
+
+## Reference execution workflow
+
+[Ghanshyam's Airtribe database assignment](https://github.com/ghanshyamca/BookMyShow-database-design)
+documents importing schema.sql and queries.sql through the MySQL command-line
+client. Its schema explicitly uses InnoDB. We will use the same file-based
+workflow with our own independently validated SQL and record actual results.
 
 ## Remaining documentation
 

@@ -76,6 +76,10 @@ Redis service, or load-test implementation.
 ## Defaults and GitHub submission
 
 - MySQL 8.0.16 or newer, using InnoDB.
+- Execute against local MySQL Community Server using the MySQL command-line
+  client; Workbench is optional. Do not use a signed-in online database platform.
+  No cloud subscription or trial credits are needed, and Docker is not required.
+  Install/configure the local server and verify InnoDB before SQL batches.
 - Indian local time used consistently for this assignment.
 - Markdown is the submission document, readable directly on GitHub.
 - The screenshot is not available in this workspace; implement the described
@@ -90,6 +94,10 @@ Redis service, or load-test implementation.
   Implement SQL on `feature/p1-p2-sql` and open a PR into main.
 
 ## References
+
+- [Ghanshyam's Airtribe database assignment](https://github.com/ghanshyamca/BookMyShow-database-design):
+  README, schema.sql, and queries.sql; documents MySQL CLI execution and uses
+  InnoDB. Reference for submission organization, not proof of concurrency safety.
 
 - [Airtribe-tagged bms-api](https://github.com/chinmaykunkikar/bms-api): community
   reference for a theatre/date/showtime API; not verified as an official solution.
