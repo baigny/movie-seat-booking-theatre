@@ -1,0 +1,3 @@
+-- P2: List shows for a selected theatre and date.
+-- Status: scaffold only. Implementation follows PLAN.md.
+-- The completed query will define MySQL input variables and return showtimes.
