@@ -1,5 +1,8 @@
 # Movie theatre booking — P1 and P2
 
+Repository: [baigny/movie-seat-booking-theatre](https://github.com/baigny/movie-seat-booking-theatre).
+The complete solution is on [feature/p1-p2-sql](https://github.com/baigny/movie-seat-booking-theatre/tree/feature/p1-p2-sql).
+
 Executable MySQL schema, sample data, showtime query, and transaction tests.
 The schema follows **BCNF** and includes **concurrency verification**.
 Redis, queues, an HTTP backend, external payments, and automatic scheduling
@@ -28,8 +31,7 @@ SOURCE C:/data-modelling-movie-theatre/sql/booking_api.sql;
 SOURCE C:/data-modelling-movie-theatre/sql/p2.sql;
 ```
 
-Do not source P1 against populated tables. The existing database on your
-normal server has not been migrated by the isolated tests. To upgrade it:
+Do not source P1 against populated tables. For a compatible existing database,
 back it up, stop application writes, run the migration once, then install
 booking_api.sql. Use mysql batch input that aborts on errors, without --force;
 DDL commits implicitly, so inspect a partially failed migration rather than
@@ -123,7 +125,9 @@ The [report](sql/tests/bcnf-results.json) records a successful MySQL 8.4.9 run:
 - Expiry while waiting for a lock, timeout rollback/retry, and an actual
   deadlock victim followed by whole-transaction retry all passed.
 - Nine negative constraint cases, invalid/duplicate seat requests,
-  P2 default output, migration preservation, and restricted-client access passed.
+  all four P2 cases, migration preservation, and restricted-client access passed.
+
+All 19 checks in the execution report passed.
 
 The suite asserts no duplicate show-seat ownership, no invalid inventory,
 no partial active bookings, no lost allocations, and no duplicate applied
@@ -144,6 +148,6 @@ credentials. The suite creates GUID-named schemas and leaves them for inspection
 it never drops or overwrites an application database. Administrative test access
 is required to create routines, observe locks, and create/remove a temporary
 restricted account. Passwords are not stored in this repository. The migration
-test uses the compatibility fixture from Git commit a2153ef.
+test uses the `a2153ef` compatibility tag included in the repository.
 
 The integration suite and its JSON report provide the execution evidence.
