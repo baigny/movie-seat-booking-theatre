@@ -1,2 +1,3 @@
 sql/tests/clean_run.generated.sql
 sql/tests/race_*.generated.sql
+.mysql-verification/

@@ -648,10 +648,16 @@ This single-session run does not repeat the two-client locking test.
 
 ## Broader concurrency checks
 
-The [committed-winner test](sql/tests/RACE_TESTS.md) is prepared in a separate
-generated schema. It checks that a losing two-seat request rolls back its partial
+The [committed-winner test](sql/tests/RACE_TESTS.md) passed on 2026-09-29 in an
+assistant-run isolated MySQL 8.4.9 instance using a separate generated schema.
+An observer confirmed B's wait in performance_schema.data_lock_waits before A
+committed. Both PASS results matched; B1 remained sold to booking 1 and B2 was
+available with NULL ownership. The temporary server was shut down afterward.
+The [execution output](sql/tests/execution-2026-09-29.txt) also records successful
+reruns of P2 and the nine constraint and six lifecycle checks.
+The test checks that a losing two-seat request rolls back its partial
 claim after waiting for a winner to commit, and that replay cannot replace the
 winner's payment event. Follow its two-terminal sequence and report both PASS
-rows plus whether terminal B waited. Execution remains pending. This extends
+rows plus whether terminal B waited when reproducing manually. This extends
 the timeout-only test; it does not simulate concurrent external webhook workers
 or expiry-versus-confirmation races.

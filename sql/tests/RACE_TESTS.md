@@ -1,6 +1,13 @@
 # Committed winner and partial seat claim
 
-Status: prepared, execution pending. Use two mysql clients on the same server.
+Status: executed successfully on 2026-09-29 by the assistant against an isolated
+MySQL 8.4.9 server on localhost port 13307. Two independent mysql processes ran
+the generated scripts. An observer connection confirmed a wait in
+performance_schema.data_lock_waits before A committed. Both PASS results and
+the final B1 sold/1 and B2 available/NULL rows matched. The temporary server
+was shut down afterward. See [execution output](execution-2026-09-29.txt).
+
+To reproduce manually, use two mysql clients on the same server.
 The generator creates a new test schema from P1. All writes are confined to it;
 it is retained for inspection, and the original project schema is unchanged.
 Regenerate for a repeat run; never rerun the same setup file.

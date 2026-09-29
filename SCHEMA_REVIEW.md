@@ -98,6 +98,8 @@ executable examples; they are not installed production booking APIs.
 
 The nine constraint checks, six lifecycle checks, two-client lock exclusion,
 P2 filter cases, and fresh-schema replay have user-provided execution evidence.
-The new committed-winner/partial-claim test is prepared but not yet executed.
+The committed-winner/partial-claim test also passed in assistant-run execution
+on isolated MySQL 8.4.9, with an actual lock wait observed before commit. The
+constraint and lifecycle scripts and P2 queries were also rerun successfully.
 Concurrent expiry-versus-confirmation, deadlock retries, and an actual external
 payment integration are not verified by these examples.
