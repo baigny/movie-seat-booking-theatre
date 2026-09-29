@@ -95,9 +95,6 @@ exception rolls back the transaction. Clients retry only 1205 and 1213 with
 bounded backoff/jitter, restarting the entire call. Business rejections are not
 retried. The suite induces and verifies both a timeout and a real deadlock.
 
-MySQL references: [locking reads](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking-reads.html)
-and [JSON_TABLE](https://dev.mysql.com/doc/refman/8.4/en/json-table-functions.html).
-
 The API chooses pessimistic seat-row locks for contested inventory. The trade-off
 with an optimistic claim design, including the unique-claim/version state that
 would be needed with this normalized schema, is documented in
@@ -145,7 +142,6 @@ still checks the real deadline, so delayed cleanup cannot authorize late payment
 Release is eventual, not exact to the second; backlog and lock waits can increase
 the delay. Monitor expired-held counts, event LAST_EXECUTED and the server error
 log. A single-server event does not supply distributed failover orchestration.
-See the [MySQL Event Scheduler documentation](https://dev.mysql.com/doc/refman/8.4/en/event-scheduler.html).
 
 ## Requirements coverage
 
@@ -158,7 +154,6 @@ See the [MySQL Event Scheduler documentation](https://dev.mysql.com/doc/refman/8
 | Idempotent payment handling | SQL confirmation routine and concurrent replay tests; no HTTP webhook endpoint or provider signature verification |
 | P2 theatre/date showtimes | sql/p2.sql; exact fixture results, alternate filters and midnight boundary tests |
 | Load and concurrency evidence | Local 1,000-request workloads at 64 workers, race tests and recorded latency; not a production-scale certification |
-| Redis, queues and backend service | Not implemented in this SQL submission |
 | GitHub PR submission | [PR #1](https://github.com/baigny/movie-seat-booking-theatre/pull/1) |
 
 This submission covers the MySQL data model, booking transactions, showtime
