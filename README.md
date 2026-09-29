@@ -11,7 +11,8 @@ implementation steps, verification, and references.
   MySQL output through batch 9. All ten tables now have sample data verified
   through batch 11. Nine constraint checks, row-lock exclusion, and six lifecycle
   checks passed; broader concurrency coverage and a clean-database run remain.
-- [sql/p2.sql](sql/p2.sql): shows by theatre and date (pending).
+- [sql/p2.sql](sql/p2.sql): default output, alternate theatre/date inputs, and
+  empty-result behavior verified from user-provided MySQL output.
 
 ## Target database
 
@@ -539,6 +540,55 @@ payment for an already confirmed booking requires reconciliation rather than
 another seat allocation. Scheduled cleanup must recheck expiry and ownership
 under those same locks. Further multi-seat and concurrent lifecycle coverage
 remains pending; do not infer production readiness from these six checks.
+
+## SQL batch 12: P2 theatre/date showtimes
+
+Status: default input verified from user-provided MySQL output. Theatre 1 on
+2026-09-28 returned exactly the three expected rows below, including both
+Journey to the Stars showtimes, with matching screen names, dates, and order.
+The additional sql/tests/p2_filters.sql run returned one Ocean of Dreams row
+for theatre 2 on 2026-09-28, one The Last Train row for theatre 1 on 2026-09-29,
+and an empty set for theatre 1 on 2026-10-05. The first pasted result contained
+overlapping terminal formatting, but its expected row and one-row count were
+visible. All four fixture cases now have user-provided execution evidence.
+sql/p2.sql contains two statements: one SET for both input variables and one
+SELECT joining shows, movies, screens, and theatres. Fully qualified tables
+allow execution regardless of the connection's currently selected database.
+
+Run from the logged-in mysql prompt:
+
+```text
+SOURCE C:/data-modelling-movie-theatre/sql/p2.sql;
+```
+
+The default inputs are theatre 1 and the fixed fixture date 2026-09-28. Expected:
+
+| movie_title | screen_name | show_date | show_time |
+| --- | --- | --- | --- |
+| Journey to the Stars | Screen 1 | 2026-09-28 | 10:00:00 |
+| Journey to the Stars | Screen 1 | 2026-09-28 | 14:00:00 |
+| The Last Train | Screen 2 | 2026-09-28 | 11:00:00 |
+
+The query returns one row per show, ordered by movie title, start time, and
+show ID. Its half-open interval includes midnight on the selected date and
+excludes midnight on the next date. No function wraps starts_at in the WHERE
+clause, allowing the existing screen/start index to support date-range lookup.
+DATE and TIME format only the output columns.
+
+For additional checks, change the SET inputs in the file before sourcing it,
+or set the variables in the client and rerun only the SELECT. Sourcing the
+unchanged file resets both inputs to the defaults.
+
+| Theatre | Date | Expected result |
+| --- | --- | --- |
+| 2 | 2026-09-28 | Ocean of Dreams, Screen 1, 10:00:00 only |
+| 1 | 2026-09-29 | The Last Train, Screen 1, 10:00:00 only |
+| 1 | 2026-10-05 | No rows |
+
+The intended date picker offers today and the following six dates using Indian
+local time. This repository has no frontend; the SQL accepts the selected date
+and also allows fixed historical dates for fixture verification. The fixture
+does not move forward automatically as today's date changes.
 
 ## Reference execution workflow
 
