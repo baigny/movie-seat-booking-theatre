@@ -328,22 +328,6 @@ def main():
     check('real deadlock victim retried as a whole transaction',
           1213 in retry_errors[retry_before:] and invariant(), retries=retry_errors[retry_before:])
     query('DROP TABLE test_retry_ballast;')
-    # Verify migration from the committed pre-BCNF schema in another fresh schema.
-    migration_schema = 'bcnf_migrate_' + uuid.uuid4().hex
-    old = subprocess.run(['git','show','a2153ef:sql/p1.sql'], cwd=ROOT,
-                         capture_output=True, text=True, check=True).stdout
-    migration = (ROOT / 'sql/migrations/001_bcnf_allocations.sql').read_text()
-    migrated = raw((old + '\n' + migration).replace('movie_seat_booking', migration_schema))
-    check('existing-schema migration executes', migrated.returncode == 0, error=migrated.stderr)
-    migration_check = raw(f'''USE {migration_schema};
-      SELECT (SELECT COUNT(*) FROM show_seats), (SELECT COUNT(*) FROM seat_allocations),
-             (SELECT COUNT(*) FROM booking_seats), (SELECT COUNT(*) FROM bookings),
-             (SELECT COUNT(*) FROM payment_events);
-      SELECT booking_id,row_label,seat_number FROM seat_allocations ORDER BY 1,2,3;''')
-    check('migration preserves inventory allocations and history', migration_check.returncode == 0
-          and migration_check.stdout.strip() == '36\t2\t2\t1\t1\n1\tA\t1\n1\tA\t2')
-    migration_api = raw(api.replace(schema, migration_schema))
-    check('transaction routines install after migration', migration_api.returncode == 0, error=migration_api.stderr)
     # An execute-only account cannot bypass the normalized allocation mutex.
     account = 'test_' + uuid.uuid4().hex[:16]
     privilege_setup = raw(f"CREATE USER '{account}'@'localhost'; GRANT SELECT ON {schema}.* TO '{account}'@'localhost';"

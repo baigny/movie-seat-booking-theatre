@@ -1,4 +1,4 @@
--- Install after P1, or after migration 001. Top-level calls own transactions.
+-- Install after P1. Top-level calls own transactions.
 -- Application accounts get EXECUTE on hold_seats, confirm_payment, expire_booking
 -- and SELECT only. No direct DML and no EXECUTE on the internal lock helper.
 USE movie_seat_booking;

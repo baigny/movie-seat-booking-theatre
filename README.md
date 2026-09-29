@@ -19,7 +19,6 @@ Automatic hold release is available through an optional MySQL event.
 - [P2](sql/p2.sql): theatre/date showtime query.
 - [Optional expiry event](sql/expiry_event.sql): bounded timer-based cleanup using the transaction API.
 - [Test suite](sql/tests/verify_bcnf.py) and [execution report](sql/tests/bcnf-results.json).
-- [Migration](sql/migrations/001_bcnf_allocations.sql): allocation-table conversion for compatible existing databases.
 
 ## Installation
 
@@ -28,18 +27,13 @@ local time; money is INR. On a fresh project database, at the mysql prompt:
 
 ```sql
 SET time_zone = '+05:30';
-SOURCE C:/data-modelling-movie-theatre/sql/p1.sql;
-SOURCE C:/data-modelling-movie-theatre/sql/booking_api.sql;
-SOURCE C:/data-modelling-movie-theatre/sql/p2.sql;
+SOURCE C:/movie-seat-booking-theatre/sql/p1.sql;
+SOURCE C:/movie-seat-booking-theatre/sql/booking_api.sql;
+SOURCE C:/movie-seat-booking-theatre/sql/p2.sql;
 ```
 
-Do not source P1 against populated tables. For a compatible existing database,
-back it up, stop application writes, run the migration once, then install
-booking_api.sql. Use mysql batch input that aborts on errors, without --force;
-DDL commits implicitly, so inspect a partially failed migration rather than
-rerunning blindly. Migration preflight rejects inconsistent allocations.
-Migration and routine installation were verified against the compatible
-sample schema; verification runs do not modify your existing database.
+Install P1 only in a fresh database. Do not source it against populated tables.
+Verification runs create isolated schemas and do not modify an application database.
 
 Applications must use the grants in [application_role.sql](sql/application_role.sql):
 SELECT plus EXECUTE on hold_seats, confirm_payment, and expire_booking only.
@@ -122,7 +116,7 @@ Edit the SET inputs for another selection; sourcing P2 resets its defaults.
 After installing the transaction API, an administrator can install the event once:
 
 ```sql
-SOURCE C:/data-modelling-movie-theatre/sql/expiry_event.sql;
+SOURCE C:/movie-seat-booking-theatre/sql/expiry_event.sql;
 -- Server-wide setting: enable deliberately on the intended server.
 SET GLOBAL event_scheduler = ON;
 ALTER EVENT movie_seat_booking.release_expired_holds ENABLE;
@@ -164,22 +158,22 @@ query, optional scheduled expiry, and reproducible database tests.
 The [report](sql/tests/bcnf-results.json) records a successful MySQL 8.4.9 run:
 
 - 1,000 competing two-seat requests at 64 workers: one winner, 999 rejected in
-  18.125 seconds; no partial losing bookings or allocations.
+  21.313 seconds; no partial losing bookings or allocations.
 - Independent-seat workload: 1,000 of 1,000 holds succeeded at 64 workers in
-  18.378 seconds (54.41 requests/second). Latency was p50 1,034 ms, p95 1,574 ms,
-  p99 1,985 ms, and max 2,816 ms.
+  20.06 seconds (49.85 requests/second). Latency was p50 1,127 ms, p95 1,810 ms,
+  p99 2,417 ms, and max 2,942 ms.
 - 100 concurrent duplicate confirmations: one applied event and stable ownership.
 - 30 overlapping expiry/payment races: 15 expired and 15 live holds; stale
   confirmation cannot take seats from a replacement booking.
 - Expiry while waiting for a lock, timeout rollback/retry, and an actual
   deadlock victim followed by whole-transaction retry all passed.
 - Nine negative constraint cases, invalid/duplicate seat requests,
-  malformed JSON seat values, P2 filters and midnight boundaries, migration
-  preservation, and restricted-client access passed.
+  malformed JSON seat values, P2 filters and midnight boundaries,
+  and restricted-client access passed.
   The optional event installed disabled; an enabled test event automatically
   expired a hold while preserving live holds and confirmed seats.
 
-All 24 checks in the execution report passed.
+All 21 checks in the execution report passed.
 
 The suite asserts no duplicate show-seat ownership, no invalid inventory,
 no partial active bookings, no lost allocations, and no duplicate applied
@@ -202,8 +196,7 @@ Only the Python standard library is needed. Use --login-path for saved local
 credentials. The suite creates GUID-named schemas and leaves them for inspection;
 it never drops or overwrites an application database. Administrative test access
 is required to create routines, observe locks, and create/remove a temporary
-restricted account. Passwords are not stored in this repository. The migration
-test uses the `a2153ef` compatibility tag included in the repository.
+restricted account. Passwords are not stored in this repository.
 
 The integration suite and its JSON report provide the execution evidence.
 For the automatic-event check, enable event_scheduler on the isolated test

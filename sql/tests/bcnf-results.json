@@ -1,5 +1,5 @@
 {
-  "schema": "bcnf_verify_c2afdd0815b74c8eab19aef8bd8fdd1c",
+  "schema": "bcnf_verify_b5358be0df5349c1a8215d7d0d0ab9d4",
   "tests": [
     {
       "name": "fresh BCNF schema and routines install",
@@ -43,7 +43,7 @@
       "passed": true,
       "successes": 1,
       "rejected": 999,
-      "seconds": 18.125
+      "seconds": 21.313
     },
     {
       "name": "losing holds roll back entire bookings",
@@ -56,12 +56,12 @@
       "workers": 64,
       "successes": 1000,
       "failures": 0,
-      "seconds": 18.378,
-      "requests_per_second": 54.41,
-      "latency_ms_p50": 1033.857,
-      "latency_ms_p95": 1574.275,
-      "latency_ms_p99": 1985.132,
-      "latency_ms_max": 2816.304,
+      "seconds": 20.06,
+      "requests_per_second": 49.85,
+      "latency_ms_p50": 1126.653,
+      "latency_ms_p95": 1809.963,
+      "latency_ms_p99": 2416.709,
+      "latency_ms_max": 2941.677,
       "first_error": ""
     },
     {
@@ -92,20 +92,6 @@
       "retries": [
         1213
       ]
-    },
-    {
-      "name": "existing-schema migration executes",
-      "passed": true,
-      "error": ""
-    },
-    {
-      "name": "migration preserves inventory allocations and history",
-      "passed": true
-    },
-    {
-      "name": "transaction routines install after migration",
-      "passed": true,
-      "error": ""
     },
     {
       "name": "restricted client can hold but cannot bypass routines",
