@@ -5,8 +5,9 @@ The complete solution is on [feature/p1-p2-sql](https://github.com/baigny/movie-
 
 Executable MySQL schema, sample data, showtime query, and transaction tests.
 The schema follows **BCNF** and includes **concurrency verification**.
-Redis, queues, an HTTP backend, external payments, and automatic scheduling
+Redis, queues, an HTTP backend, and external payment integration
 are outside the project's scope.
+Automatic hold release is available through an optional MySQL event.
 
 ## Files
 
@@ -16,6 +17,7 @@ are outside the project's scope.
 - [Transaction API](sql/booking_api.sql): atomic holds, confirmation, expiry,
   and the derived seat_availability view.
 - [P2](sql/p2.sql): theatre/date showtime query.
+- [Optional expiry event](sql/expiry_event.sql): bounded timer-based cleanup using the transaction API.
 - [Test suite](sql/tests/verify_bcnf.py) and [execution report](sql/tests/bcnf-results.json).
 - [Migration](sql/migrations/001_bcnf_allocations.sql): allocation-table conversion for compatible existing databases.
 
@@ -77,7 +79,7 @@ remain protected until cleanup releases them; a competing hold cannot steal them
 
 `expire_booking(booking_id)` locks the booking and inventory, releasing only
 that booking's allocations when a held deadline has passed. Confirmed bookings
-are never expired. An external worker can call it; no scheduler is installed.
+are never expired. An external worker or the optional MySQL event can call it.
 
 `confirm_payment(booking_id, provider, event_id, amount)` serializes with expiry
 on the booking lock, checks totals and complete ownership, and confirms once.
@@ -118,24 +120,71 @@ returns The Last Train at 10:00; October 5 has no rows. The intended date picker
 offers today plus six days in Indian local time; no frontend is included.
 Edit the SET inputs for another selection; sourcing P2 resets its defaults.
 
+## Optional automatic hold release
+
+After installing the transaction API, an administrator can install the event once:
+
+```sql
+SOURCE C:/data-modelling-movie-theatre/sql/expiry_event.sql;
+-- Server-wide setting: enable deliberately on the intended server.
+SET GLOBAL event_scheduler = ON;
+ALTER EVENT movie_seat_booking.release_expired_holds ENABLE;
+```
+
+Installation leaves the event disabled and does not change the server-wide
+scheduler setting. Configure event_scheduler=ON in the server configuration for
+persistence across restarts. Keep the installer/definer account available with
+the required privileges. Application accounts do not receive EVENT or access to
+the sweep procedure. To pause cleanup, ALTER EVENT with DISABLE.
+
+The event runs every minute, considers at most 100 expired bookings per pass,
+and calls expire_booking for each. An expiry index supports candidate selection;
+a named lock prevents overlapping sweeps in the same database. Busy bookings
+are skipped after a short lock timeout and retried on a later pass. Confirmation
+still checks the real deadline, so delayed cleanup cannot authorize late payment.
+Release is eventual, not exact to the second; backlog and lock waits can increase
+the delay. Monitor expired-held counts, event LAST_EXECUTED and the server error
+log. A single-server event does not supply distributed failover orchestration.
+See the [MySQL Event Scheduler documentation](https://dev.mysql.com/doc/refman/8.4/en/event-scheduler.html).
+
+## Requirements coverage
+
+| Requirement | Implementation and evidence |
+| --- | --- |
+| P1 entities, attributes, sample rows and executable SQL | sql/p1.sql, sample rows above, and SCHEMA_DESIGN.md |
+| 1NF, 2NF, 3NF and BCNF | Explicit normal-form reasoning and candidate-key dependencies in SCHEMA_DESIGN.md |
+| Seat locking, no double-booking or lost holds | Atomic routines, restricted application role, contention and lifecycle invariants in the test suite |
+| Timer-based hold release | Optional MySQL event; activation requires administrator setup |
+| Idempotent payment handling | SQL confirmation routine and concurrent replay tests; no HTTP webhook endpoint or provider signature verification |
+| P2 theatre/date showtimes | sql/p2.sql; exact fixture results, alternate filters and midnight boundary tests |
+| Load and concurrency evidence | Local 1,000-request workloads at 64 workers, race tests and recorded latency; not a production-scale certification |
+| Redis, queues and backend service | Not implemented in this SQL submission |
+| GitHub PR submission | [PR #1](https://github.com/baigny/movie-seat-booking-theatre/pull/1) |
+
+This submission covers the MySQL data model, booking transactions, showtime
+query, optional scheduled expiry, and reproducible database tests.
+
 ## Verified concurrency evidence
 
 The [report](sql/tests/bcnf-results.json) records a successful MySQL 8.4.9 run:
 
 - 1,000 competing two-seat requests at 64 workers: one winner, 999 rejected in
-  20.078 seconds; no partial losing bookings or allocations.
+  18.125 seconds; no partial losing bookings or allocations.
 - Independent-seat workload: 1,000 of 1,000 holds succeeded at 64 workers in
-  20.806 seconds (48.06 requests/second). Latency was p50 1,193 ms, p95 1,871 ms,
-  p99 2,295 ms, and max 4,117 ms.
+  18.378 seconds (54.41 requests/second). Latency was p50 1,034 ms, p95 1,574 ms,
+  p99 1,985 ms, and max 2,816 ms.
 - 100 concurrent duplicate confirmations: one applied event and stable ownership.
 - 30 overlapping expiry/payment races: 15 expired and 15 live holds; stale
   confirmation cannot take seats from a replacement booking.
 - Expiry while waiting for a lock, timeout rollback/retry, and an actual
   deadlock victim followed by whole-transaction retry all passed.
 - Nine negative constraint cases, invalid/duplicate seat requests,
-  all four P2 cases, migration preservation, and restricted-client access passed.
+  malformed JSON seat values, P2 filters and midnight boundaries, migration
+  preservation, and restricted-client access passed.
+  The optional event installed disabled; an enabled test event automatically
+  expired a hold while preserving live holds and confirmed seats.
 
-All 20 checks in the execution report passed.
+All 24 checks in the execution report passed.
 
 The suite asserts no duplicate show-seat ownership, no invalid inventory,
 no partial active bookings, no lost allocations, and no duplicate applied
@@ -162,3 +211,6 @@ restricted account. Passwords are not stored in this repository. The migration
 test uses the `a2153ef` compatibility tag included in the repository.
 
 The integration suite and its JSON report provide the execution evidence.
+For the automatic-event check, enable event_scheduler on the isolated test
+server first and add --test-event. This flag uses a one-second schedule in the
+generated schema, then disables that event. The production script uses one minute.

@@ -1,105 +1,122 @@
-# Movie Seat Booking Theatre — P1 and P2 Plan
+# Movie theatre booking - Project requirements and plan
 
-Repository: https://github.com/baigny/movie-seat-booking-theatre
+## Scenario
 
-## Goal and submission
+A movie-ticket booking platform lets a customer select a theatre, choose one of
+the next seven dates, and view the movies and show timings for that date.
+Multiple customers may attempt to book the same seats simultaneously. The data
+model must support temporary holds, safe confirmation and release of expired holds.
 
-Submit a GitHub pull request containing a Markdown document listing all tables,
-attributes, relationships, and example rows, plus directly executable MySQL SQL
-for P1 and P2. This submission does not include a frontend, backend application,
-Redis service, or load-test implementation.
+## Objective and scope
+
+Build the MySQL P1 and P2 solution with documented entities, normalized tables,
+sample data, executable queries and reproducible concurrency tests. Include
+transaction routines for seat holds and payment confirmation, plus an optional
+MySQL event for automatic expiry.
+
+The broader ticketing scenario introduces Redis, queues and a backend service.
+This project's agreed scope is the SQL layer and its verification. A frontend,
+HTTP webhook endpoint, provider signature verification, external refund execution,
+Redis integration, queue processing and distributed failover are outside this
+implementation scope.
+
+## P1 requirements: Schema and booking integrity
+
+- Identify all entities, attributes, relationships and business rules.
+- Define primary keys, candidate keys, foreign keys, unique constraints,
+  validation constraints and indexes.
+- Explain 1NF, 2NF, 3NF and BCNF using candidate keys and functional dependencies.
+- Separate physical seats, per-show inventory, current allocations and historical
+  booking items so ownership changes do not erase purchase history.
+- Provide directly executable MySQL table definitions and representative sample rows.
+- Prevent double-booking and partial multi-seat holds under concurrent requests.
+- Store hold ownership and deadlines; reject confirmations after expiry.
+- Process duplicate payment events idempotently and reject changed replay payloads.
+- Ensure late payment events cannot reclaim seats assigned to another booking.
+- Provide timer-based expiry using an optional MySQL event with documented activation.
+- Restrict application writes to the public transaction routines.
+
+### Proposed entities
+
+| Entity | Purpose |
+| --- | --- |
+| theatres | Theatre identity and address |
+| screens | Screens within a theatre |
+| seats | Physical seat positions within a screen |
+| movies | Movie titles and durations |
+| shows | Movie screenings, start times and prices |
+| users | Customer identity and contact information |
+| bookings | Customer, selected show, lifecycle state, hold deadline and total |
+| show_seats | Valid seat inventory for each show |
+| seat_allocations | Current seat ownership through a booking |
+| booking_seats | Historical purchased seat positions and prices |
+| payment_events | Provider event identities and processing outcomes |
+
+## P2 requirements: Theatre and date query
+
+Accept a theatre ID and selected date. Return movie title, screen name, show
+date and show time for every matching show, in a deterministic order.
+Use an inclusive day start and exclusive next-day start to handle midnight
+correctly and keep the show-start column usable by an index.
+
+Provide sample data spanning seven dates, multiple theatres and screens,
+multiple showtimes for one movie, and dates with no matching shows. Describe
+the date-picker behavior as today plus six days in Indian local time.
+
+## Implementation approach
+
+1. Define the business assumptions, entities, candidate keys and dependencies.
+2. Create the normalized InnoDB schema, constraints, indexes and sample inserts.
+3. Implement atomic hold, confirmation and expiry routines. Lock inventory in
+   a consistent order and roll back the entire request on failure.
+4. Enforce payment replay checks, amount validation, ownership checks and hold
+   deadlines within the transaction. Return an explicit outcome for payments
+   requiring external reconciliation.
+5. Add restricted application privileges and optional scheduled expiry using
+   the same locking protocol as confirmation.
+6. Implement the theatre/date query and document expected sample output.
+7. Build and run isolated integration and concurrency tests. Record measured
+   results and document the environment and limits of the evidence.
+8. Prepare the schema documentation, execution instructions and GitHub PR.
+
+Compare pessimistic row locking with optimistic claims and explain the chosen
+strategy. Keep transactions short, use a consistent lock order, and retry
+transient deadlock or lock-timeout failures at the full-transaction boundary.
+Assume show schedules and seat layouts remain stable while sales operate.
+
+## Verification and acceptance criteria
+
+| Area | Required verification |
+| --- | --- |
+| Installation | Schema, sample data and routines execute on a clean MySQL database |
+| Constraints | Invalid references, duplicate keys and invalid values are rejected |
+| Seat input | Malformed, duplicate and out-of-show seat requests are rejected without partial writes |
+| P2 | Exact sample results, theatre/date isolation, empty results and midnight boundaries |
+| Contention | Competing requests cannot own the same show-seat; losing multi-seat requests roll back completely |
+| Lifecycle | Expiry and confirmation races preserve ownership; stale confirmations cannot reclaim seats |
+| Payments | Concurrent duplicate events produce one applied effect; altered replays are rejected |
+| Recovery | Lock timeouts and deadlocks allow safe whole-transaction retries |
+| Permissions | Application accounts can use public routines but cannot bypass them with direct writes |
+| Scheduling | Enabled expiry releases expired holds while preserving live holds and confirmed seats |
+| Load | Measure contested and independent-seat workloads, successes, rejections, throughput and latency |
+
+Design the load test with at least 1,000 requests and a documented worker limit.
+Record actual simultaneous concurrency rather than equating request count with
+open connections. Assert no duplicate ownership, lost allocations, partial
+active bookings or duplicate applied payment effects. Use isolated test schemas
+and report local measurements without treating them as proof of production scale.
 
 ## Deliverables
 
-- `README.md`: schema documentation, relationships, sample rows, normalization
-  reasoning, concurrency strategy, execution instructions, and references.
-- `sql/p1.sql`: table creation, constraints, indexes, and sample INSERT statements.
-- `sql/p2.sql`: showtime query using MySQL variables for theatre ID and date.
+- README with setup instructions, sample rows, P1/P2 usage and scope.
+- Schema document listing attributes, relationships, keys and normalization reasoning.
+- Executable SQL for P1, P2, booking routines, application privileges and optional expiry.
+- Reproducible test suite and an execution report containing actual results.
+- GitHub pull request containing the documentation, SQL and verification artifacts.
 
-## P1: Database design
+## Technical assumptions
 
-| Table | Purpose |
-| --- | --- |
-| theatres | Theatre names and addresses |
-| screens | Screens belonging to each theatre |
-| seats | Physical seats within each screen |
-| movies | Movie titles and durations |
-| shows | Movie, screen, and scheduled start time |
-| users | Customers who book tickets |
-| show_seats | Valid physical inventory for each show; no owner/status redundancy |
-| seat_allocations | BCNF current ownership; show derived through bookings |
-| bookings | Customer bookings, status, and hold expiry |
-| booking_seats | Seats associated with each booking |
-| payment_events | Payment event identifiers and processing outcomes |
-
-1. Define attributes, data types, primary keys, foreign keys, unique constraints,
-   and indexes for every table.
-2. Distinguish physical seats from seat availability for a particular show.
-   Enforce one inventory row per show and seat. Validate that each seat belongs
-   to the screen hosting the show.
-3. Document candidate keys and functional dependencies. Explain 1NF, 2NF, 3NF,
-   and BCNF per table; do not merely assert that normalization is satisfied.
-4. Seed two theatres, multiple screens, movies, dates, showtimes, and seats,
-   together with an illustrative booking and payment event.
-5. Document short InnoDB transactions that lock inventory rows in a consistent
-   order before holding or confirming seats. Acquire all requested seats or none.
-6. Persist hold ownership and expiry. Check expiry in transactions and document
-   scheduled cleanup. An expired hold must never confirm seats reassigned to
-   another customer; late successful payments require a refund/reconciliation
-   path rather than reclaiming those seats.
-7. Use unique provider/event identifiers and transactional processing to prevent
-   duplicate webhook effects. Describe idempotent booking confirmation as well.
-
-## P2: Showtime query
-
-- Set theatre ID and selected date with MySQL variables.
-- Join shows, movies, screens, and theatres.
-- Filter by theatre ID and a half-open date interval, keeping functions off the
-  indexed show-start column.
-- Return one row per show: movie title, screen name, show date, and show time.
-- Order by movie title, show start time, and show ID for deterministic results.
-- Explain that the date picker offers today and the following six dates.
-
-## Verification
-
-1. Execute P1 on a clean MySQL database, then execute P2.
-2. Compare returned rows with the documented sample output.
-3. Test the same date at different theatres, multiple showtimes for one movie,
-   and a date with no shows.
-4. Check invalid foreign keys, invalid seat/screen combinations, and duplicate
-   inventory allocations.
-5. Use two database sessions to demonstrate that competing claims for the same
-   show seat cannot both succeed.
-6. Verify hold expiry, stale confirmation rejection, and duplicate payment
-   handling with the documented transaction examples.
-7. Record actual verification results; do not claim tests that were not run.
-
-## Defaults and GitHub submission
-
-- MySQL 8.0.16 or newer, using InnoDB.
-- Execute against local MySQL Community Server using the MySQL command-line
-  client; Workbench is optional. Do not use a signed-in online database platform.
-  No cloud subscription or trial credits are needed, and Docker is not required.
-  Install/configure the local server and verify InnoDB before SQL batches.
-- Indian local time used consistently for this assignment.
-- Markdown is the submission document, readable directly on GitHub.
-- The screenshot is not available in this workspace; implement the described
-  date-picker/showtime behavior without inventing extra UI requirements.
-- Update README.md after every implementation step with the changes, usage,
-  and actual verification results. Review and finalize it after completion.
-- Validate the schema, migration, and transaction API together using
-  sql/tests/verify_bcnf.py, and record actual execution results.
-- Push the initial setup to main in `baigny/movie-seat-booking-theatre`.
-  Implement SQL on `feature/p1-p2-sql` and open a PR into main.
-
-## References
-
-- [Ghanshyam's Airtribe database assignment](https://github.com/ghanshyamca/BookMyShow-database-design):
-  README, schema.sql, and queries.sql; documents MySQL CLI execution and uses
-  InnoDB. Reference for submission organization, not proof of concurrency safety.
-
-- [Airtribe-tagged bms-api](https://github.com/chinmaykunkikar/bms-api): community
-  reference for a theatre/date/showtime API; not verified as an official solution.
-- [Similar P1/P2 assignment](https://github.com/adityasinghbaghel/BookMyShow-design):
-  useful document structure, but its SQL contains mismatched INSERT columns and
-  placeholder ellipses. Write and validate our SQL independently.
+Use MySQL 8.0.16 or newer with InnoDB, Indian local time and INR amounts.
+Use Python and the MySQL CLI for isolated testing. Document scheduler activation,
+required privileges, cleanup delays and transaction ownership. Keep credentials
+out of the repository and avoid modifying an application database during tests.

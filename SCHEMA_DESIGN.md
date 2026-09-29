@@ -65,6 +65,13 @@ prices may differ within a booking, for example through discounts.
 | booking_seats | booking_id/row_label/seat_number | Complete key determines historical purchase_price |
 | payment_events | payment_event_id; provider/provider_event_id | Either key determines all event facts |
 
+| Normal form | Application to this schema |
+| --- | --- |
+| 1NF | Each field holds one value; seats and payment events occupy separate rows, with no seat lists stored in bookings. The request JSON is input, not a stored repeating group. |
+| 2NF | Non-key attributes depend on a complete candidate key, including alternate composite keys. In booking_seats, purchase_price depends on booking/row/number, not booking alone. Inventory and allocations contain only key attributes. |
+| 3NF | Non-key facts do not determine other non-key facts within a relation. Theatre details live in theatres, movie details in movies, and booking lifecycle facts in bookings. |
+| BCNF | Every nontrivial functional dependency has a superkey as its determinant, including dependencies involving alternate keys. The candidate-key analysis above states the business assumptions used. |
+
 Every nontrivial determinant is a candidate key or superkey under these stated
 dependencies. Thus each base relation satisfies BCNF, and consequently 3NF and
 2NF, in addition to the atomic-value 1NF assumptions. Nullable timestamps
@@ -112,6 +119,8 @@ The suite tests this privilege boundary. Administrators can bypass business
 rules through direct DML and are outside the client guarantee.
 
 Show schedules/layouts must remain stable while sales operate. Administrative
-rescheduling, external refunds, scheduling a cleanup worker, Redis, and queues
+rescheduling, external refunds, Redis, and queues
 are outside the project's scope. Concurrency correctness is documented with the
 actual test counts and limits in [README](README.md), not inferred from BCNF.
+The optional MySQL expiry event uses the same booking/inventory lock protocol;
+normalization itself does not provide locking or automatic expiry.

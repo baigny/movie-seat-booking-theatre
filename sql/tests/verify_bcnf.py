@@ -23,6 +23,8 @@ parser.add_argument('--attempts', type=int, default=1000)
 parser.add_argument('--workers', type=int, default=64)
 parser.add_argument('--benchmark-requests', type=int, default=1000)
 parser.add_argument('--report', default='sql/tests/bcnf-results.json')
+parser.add_argument('--test-event', action='store_true',
+                    help='Test scheduler on an isolated server where event_scheduler is already ON')
 args = parser.parse_args()
 if args.benchmark_requests < 1 or args.benchmark_requests > 9999:
     parser.error('--benchmark-requests must be between 1 and 9999')
@@ -181,7 +183,10 @@ def main():
     check('nine constraint rejection cases', invariant())
     p2 = (ROOT / 'sql/p2.sql').read_text().replace('movie_seat_booking', schema)
     p2out = raw(p2)
-    check('P2 unchanged default output', p2out.returncode == 0 and len(p2out.stdout.strip().splitlines()) == 3)
+    check('P2 exact default output', p2out.returncode == 0 and p2out.stdout.strip() ==
+          'Journey to the Stars\tScreen 1\t2026-09-28\t10:00:00\n'
+          'Journey to the Stars\tScreen 1\t2026-09-28\t14:00:00\n'
+          'The Last Train\tScreen 2\t2026-09-28\t11:00:00')
     select_only = p2[p2.index('SELECT m.title'):]
     for theatre, day, expected in [
         (2, '2026-09-28', 'Ocean of Dreams\tScreen 1\t2026-09-28\t10:00:00'),
@@ -190,6 +195,13 @@ def main():
         actual = query(f"SET @theatre_id={theatre}, @selected_date=DATE('{day}');" + select_only)
         assert actual == expected, (theatre, day, actual)
     check('P2 alternate theatre date and empty result', True)
+    query("""INSERT INTO shows(movie_id,screen_id,starts_at,ticket_price) VALUES
+      (1,1,'2026-10-06 00:00:00',200),(1,1,'2026-10-06 23:59:59',200),
+      (1,1,'2026-10-07 00:00:00',200);""")
+    boundary = query("SET @theatre_id=1, @selected_date=DATE('2026-10-06');" + select_only)
+    check('P2 includes both day boundaries and excludes next midnight', boundary ==
+          'Journey to the Stars\tScreen 1\t2026-10-06\t00:00:00\n'
+          'Journey to the Stars\tScreen 1\t2026-10-06\t23:59:59')
     # Anchor future fixtures beyond both current clock and original sample dates.
     query("INSERT INTO shows(movie_id,screen_id,starts_at,ticket_price) VALUES(1,1,DATE_ADD(SYSDATE(),INTERVAL 30 DAY),200);")
     fail_expected("CALL hold_seats(1,1,UUID(),'[{\"row\":\"A\",\"number\":1}]',60);", 'started show')
@@ -197,6 +209,12 @@ def main():
     fail_expected(f"CALL hold_seats(1,{show},UUID(),'[{{\"row\":\"X\",\"number\":1}}]',60);", 'seat does not belong')
     fail_expected(f"CALL hold_seats(1,{show},UUID(),'[{{\"row\":\"B\",\"number\":1}},{{\"row\":\"B\",\"number\":1}}]',60);", 'duplicate')
     check('invalid seat, duplicate request, past show rejected', invariant())
+    for seat in [{'row': 'B', 'number': 1.5}, {'row': 'B', 'number': '1'},
+                 {'row': 'BBBBBB', 'number': 1}, {'row': '', 'number': 1},
+                 {'row': 'B', 'number': 0}, {'row': 'B', 'number': 65536},
+                 {'row': None, 'number': 1}, {'row': 'B'}, {'row': 'B', 'number': True}]:
+        fail_expected(f"CALL hold_seats(1,{show},UUID(),'{json.dumps([seat])}',60);", 'invalid seat value')
+    check('nine malformed seat values rejected before coercion', invariant())
     # 1,000 attempts with bounded simultaneous connections, not 1,000 open sessions.
     before = int(query('SELECT COUNT(*) FROM bookings;'))
     def contender(n):
@@ -345,6 +363,30 @@ def main():
         check('restricted client can hold but cannot bypass routines', app_hold.returncode == 0 and invariant(), error=app_hold.stderr)
     finally:
         raw(f"DROP USER '{account}'@'localhost';")
+    event_sql = (ROOT / 'sql/expiry_event.sql').read_text().replace('movie_seat_booking', schema)
+    installed_event = raw(event_sql)
+    check('optional expiry event installs disabled', installed_event.returncode == 0 and
+          query("SELECT STATUS FROM information_schema.EVENTS WHERE EVENT_SCHEMA=DATABASE();") == 'DISABLED',
+          error=installed_event.stderr)
+    if args.test_event:
+        assert query('SELECT @@GLOBAL.event_scheduler;') == 'ON', 'Enable scheduler only on isolated test server first'
+        bid = hold(new_show(), ttl=1)
+        live_bid = hold(new_show(), ttl=900)
+        try:
+            query('ALTER EVENT release_expired_holds ON SCHEDULE EVERY 1 SECOND ENABLE;')
+            until = time.monotonic() + 15
+            while time.monotonic() < until:
+                if query(f'SELECT status FROM bookings WHERE booking_id={bid};') == 'expired':
+                    break
+                time.sleep(.2)
+            check('scheduler automatically releases expired hold and preserves live and sold seats',
+                  query(f'SELECT status FROM bookings WHERE booking_id={bid};') == 'expired'
+                  and query(f'SELECT status FROM bookings WHERE booking_id={live_bid};') == 'held'
+                  and query('SELECT status FROM bookings WHERE booking_id=1;') == 'confirmed'
+                  and invariant())
+        finally:
+            query('ALTER EVENT release_expired_holds DISABLE;')
+    report['event_execution_tested'] = args.test_event
     report['passed'] = True
 
 try:

@@ -60,6 +60,9 @@ BEGIN
     DECLARE v_count INT;
     DECLARE v_unique INT;
     DECLARE v_now DATETIME;
+    DECLARE v_index INT DEFAULT 0;
+    DECLARE v_input_row JSON;
+    DECLARE v_input_number JSON;
     DECLARE requested CURSOR FOR
         SELECT jt.row_label, jt.seat_number FROM JSON_TABLE(p_seats, '$[*]'
             COLUMNS(row_label VARCHAR(5) PATH '$.row' ERROR ON EMPTY ERROR ON ERROR,
@@ -71,6 +74,18 @@ BEGIN
        OR p_ttl_seconds IS NULL OR p_ttl_seconds NOT BETWEEN 1 AND 900 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'invalid seats or hold duration';
     END IF;
+    -- Validate original JSON before JSON_TABLE can coerce or truncate a value.
+    WHILE v_index < JSON_LENGTH(p_seats) DO
+        SET v_input_row = JSON_EXTRACT(p_seats, CONCAT('$[', v_index, '].row'));
+        SET v_input_number = JSON_EXTRACT(p_seats, CONCAT('$[', v_index, '].number'));
+        IF COALESCE(JSON_TYPE(v_input_row), '') <> 'STRING'
+           OR CHAR_LENGTH(JSON_UNQUOTE(v_input_row)) NOT BETWEEN 1 AND 5
+           OR COALESCE(JSON_TYPE(v_input_number), '') <> 'INTEGER'
+           OR CAST(JSON_UNQUOTE(v_input_number) AS DECIMAL(65,0)) NOT BETWEEN 1 AND 65535 THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'invalid seat value';
+        END IF;
+        SET v_index = v_index + 1;
+    END WHILE;
     SELECT COUNT(*), COUNT(DISTINCT jt.row_label, jt.seat_number)
     INTO v_count, v_unique FROM JSON_TABLE(p_seats, '$[*]'
         COLUMNS(row_label VARCHAR(5) PATH '$.row' ERROR ON EMPTY ERROR ON ERROR,

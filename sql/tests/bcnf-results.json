@@ -1,5 +1,5 @@
 {
-  "schema": "bcnf_verify_29d5819091784dd79e48257a51676692",
+  "schema": "bcnf_verify_c2afdd0815b74c8eab19aef8bd8fdd1c",
   "tests": [
     {
       "name": "fresh BCNF schema and routines install",
@@ -19,7 +19,7 @@
       "passed": true
     },
     {
-      "name": "P2 unchanged default output",
+      "name": "P2 exact default output",
       "passed": true
     },
     {
@@ -27,7 +27,15 @@
       "passed": true
     },
     {
+      "name": "P2 includes both day boundaries and excludes next midnight",
+      "passed": true
+    },
+    {
       "name": "invalid seat, duplicate request, past show rejected",
+      "passed": true
+    },
+    {
+      "name": "nine malformed seat values rejected before coercion",
       "passed": true
     },
     {
@@ -35,7 +43,7 @@
       "passed": true,
       "successes": 1,
       "rejected": 999,
-      "seconds": 20.078
+      "seconds": 18.125
     },
     {
       "name": "losing holds roll back entire bookings",
@@ -48,12 +56,12 @@
       "workers": 64,
       "successes": 1000,
       "failures": 0,
-      "seconds": 20.806,
-      "requests_per_second": 48.06,
-      "latency_ms_p50": 1193.437,
-      "latency_ms_p95": 1870.94,
-      "latency_ms_p99": 2295.473,
-      "latency_ms_max": 4116.686,
+      "seconds": 18.378,
+      "requests_per_second": 54.41,
+      "latency_ms_p50": 1033.857,
+      "latency_ms_p95": 1574.275,
+      "latency_ms_p99": 1985.132,
+      "latency_ms_max": 2816.304,
       "first_error": ""
     },
     {
@@ -103,10 +111,20 @@
       "name": "restricted client can hold but cannot bypass routines",
       "passed": true,
       "error": ""
+    },
+    {
+      "name": "optional expiry event installs disabled",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "name": "scheduler automatically releases expired hold and preserves live and sold seats",
+      "passed": true
     }
   ],
   "attempts": 1000,
   "workers": 64,
   "mysql_version": "8.4.9",
+  "event_execution_tested": true,
   "passed": true
 }
