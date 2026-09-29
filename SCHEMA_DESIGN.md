@@ -1,4 +1,4 @@
-# BCNF schema review
+# BCNF schema design
 
 The [P1 schema](sql/p1.sql) contains eleven base tables.
 Valid show inventory and current ownership are separate relations. No base
@@ -74,6 +74,31 @@ seat_allocations stores booking and seat identifiers. Show coordinates
 exist in bookings, where booking_id is a key. Ownership status is derived from
 bookings instead of being stored per seat. seat_availability is a joined view,
 not a base table, and does not reintroduce stored redundancy.
+
+## Locking trade-offs
+
+The transaction API uses pessimistic InnoDB row locks on the show_seats row for
+each requested seat. The inventory row is the mutex; competing transactions for
+the same seat wait, then re-check committed allocations before inserting. This
+keeps the existing normalized ownership model and makes a multi-seat hold
+all-or-nothing. Its cost is lock waiting on hot seats, deadlock handling, and
+reduced throughput when many requests target the same inventory. The API limits
+each hold to 20 seats, locks them in canonical order, and retries only deadlock
+or lock-timeout errors at the client boundary.
+
+An optimistic design would first read availability without locking and attempt
+an atomic conditional claim, using a version check or a unique key for the
+show-seat. Uncontended requests can avoid waiting for a read lock, but competing
+requests do extra work and losers must retry or fail after a write conflict.
+This schema deliberately derives the show through bookings, so
+seat_allocations(booking_id, row_label, seat_number) alone cannot enforce a
+unique show-seat claim across different bookings. An optimistic implementation
+would therefore need a dedicated claim relation keyed by show and seat, or
+versioned claim state on show_seats, plus transactional multi-seat rollback.
+Adding that state would change the present schema and integrity boundary. Given
+the expected hot-seat contention, explicit pessimistic locking is the simpler
+choice; the benchmark reports both contention correctness and uncontended-seat
+throughput instead of assuming one strategy is universally faster.
 
 ## Integrity boundary
 

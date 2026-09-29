@@ -5,6 +5,7 @@ Never drops databases. Only mutates its generated bcnf_verify_* schema.
 import argparse
 import concurrent.futures as cf
 import json
+import math
 from pathlib import Path
 import random
 import re
@@ -20,8 +21,11 @@ parser.add_argument('--user', default='root')
 parser.add_argument('--login-path')
 parser.add_argument('--attempts', type=int, default=1000)
 parser.add_argument('--workers', type=int, default=64)
+parser.add_argument('--benchmark-requests', type=int, default=1000)
 parser.add_argument('--report', default='sql/tests/bcnf-results.json')
 args = parser.parse_args()
+if args.benchmark_requests < 1 or args.benchmark_requests > 9999:
+    parser.error('--benchmark-requests must be between 1 and 9999')
 schema = 'bcnf_verify_' + uuid.uuid4().hex
 base = [args.mysql, '--no-defaults']
 if args.login_path:
@@ -96,6 +100,26 @@ def hold(show, seats=None, ttl=900):
     seats = seats or [{'row': 'B', 'number': 1}]
     return int(query(f"CALL hold_seats(1,{show},'{uuid.uuid4()}',"
                      f"'{json.dumps(seats)}',{ttl});", retry=True).split('\t')[0])
+
+def prepare_benchmark_show(seat_count):
+        labels = [f'Z{number:04d}' for number in range(seat_count)]
+        values = ','.join(f"(1,'{label}',1)" for label in labels)
+        query(f'INSERT INTO seats(screen_id,row_label,seat_number) VALUES {values};')
+        show_id = new_show()
+        query(f'''INSERT INTO show_seats(screen_id,starts_at,row_label,seat_number)
+            SELECT sh.screen_id,sh.starts_at,st.row_label,st.seat_number
+            FROM shows sh JOIN seats st ON st.screen_id=sh.screen_id
+            WHERE sh.show_id={show_id} AND st.row_label LIKE 'Z%';''')
+        actual = int(query(f'''SELECT COUNT(*) FROM show_seats
+            WHERE screen_id=1 AND starts_at=(SELECT starts_at FROM shows WHERE show_id={show_id})
+                AND row_label LIKE 'Z%';'''))
+        assert actual == seat_count, (actual, seat_count)
+        return show_id, labels
+
+def percentile_ms(samples, quantile):
+        ordered = sorted(samples)
+        index = max(0, math.ceil(quantile * len(ordered)) - 1)
+        return round(ordered[index] * 1000, 3)
 
 class Gate:
     def __init__(self, sql):
@@ -189,6 +213,31 @@ def main():
     check('overlapping two-seat contention', len(winners) == 1 and invariant(),
           successes=len(winners), rejected=args.attempts-len(winners), seconds=round(elapsed, 3))
     check('losing holds roll back entire bookings', int(query('SELECT COUNT(*) FROM bookings;')) == before + 1)
+    benchmark_show, benchmark_seats = prepare_benchmark_show(args.benchmark_requests)
+    def independent_request(label):
+        started = time.perf_counter()
+        try:
+            hold(benchmark_show, [{'row': label, 'number': 1}])
+            return True, time.perf_counter() - started, ''
+        except Exception as error:
+            return False, time.perf_counter() - started, str(error)
+    benchmark_started = time.perf_counter()
+    with cf.ThreadPoolExecutor(args.workers) as pool:
+        benchmark_outcomes = list(pool.map(independent_request, benchmark_seats))
+    benchmark_seconds = time.perf_counter() - benchmark_started
+    benchmark_latencies = [latency for _, latency, _ in benchmark_outcomes]
+    benchmark_failures = [error for passed, _, error in benchmark_outcomes if not passed]
+    check('independent-seat booking throughput',
+          not benchmark_failures and invariant(),
+          requests=args.benchmark_requests, workers=args.workers,
+          successes=args.benchmark_requests-len(benchmark_failures),
+          failures=len(benchmark_failures), seconds=round(benchmark_seconds, 3),
+          requests_per_second=round(args.benchmark_requests / benchmark_seconds, 2),
+          latency_ms_p50=percentile_ms(benchmark_latencies, 0.50),
+          latency_ms_p95=percentile_ms(benchmark_latencies, 0.95),
+          latency_ms_p99=percentile_ms(benchmark_latencies, 0.99),
+          latency_ms_max=round(max(benchmark_latencies) * 1000, 3),
+          first_error=benchmark_failures[0] if benchmark_failures else '')
     # Same provider event processed in concurrent transactions on the winner.
     winner = winners[0]
     with cf.ThreadPoolExecutor(32) as pool:

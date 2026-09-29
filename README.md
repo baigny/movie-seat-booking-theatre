@@ -11,7 +11,7 @@ are outside the project's scope.
 ## Files
 
 - [P1](sql/p1.sql): eleven BCNF base tables, constraints, indexes, sample data.
-- [Schema review](SCHEMA_REVIEW.md): every attribute, relationships, candidate
+- [Schema design](SCHEMA_DESIGN.md): every attribute, relationships, candidate
   keys, functional dependencies, and the integrity boundary.
 - [Transaction API](sql/booking_api.sql): atomic holds, confirmation, expiry,
   and the derived seat_availability view.
@@ -96,6 +96,11 @@ retried. The suite induces and verifies both a timeout and a real deadlock.
 MySQL references: [locking reads](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking-reads.html)
 and [JSON_TABLE](https://dev.mysql.com/doc/refman/8.4/en/json-table-functions.html).
 
+The API chooses pessimistic seat-row locks for contested inventory. The trade-off
+with an optimistic claim design, including the unique-claim/version state that
+would be needed with this normalized schema, is documented in
+[SCHEMA_DESIGN.md](SCHEMA_DESIGN.md).
+
 ## P2 query
 
 P2 uses theatre 1 and September 28, 2026 by default. The WHERE clause uses a
@@ -117,8 +122,11 @@ Edit the SET inputs for another selection; sourcing P2 resets its defaults.
 
 The [report](sql/tests/bcnf-results.json) records a successful MySQL 8.4.9 run:
 
-- 1,000 competing two-seat requests at 64 workers: one winner, 999 rejected;
-  no partial losing bookings or allocations.
+- 1,000 competing two-seat requests at 64 workers: one winner, 999 rejected in
+  20.078 seconds; no partial losing bookings or allocations.
+- Independent-seat workload: 1,000 of 1,000 holds succeeded at 64 workers in
+  20.806 seconds (48.06 requests/second). Latency was p50 1,193 ms, p95 1,871 ms,
+  p99 2,295 ms, and max 4,117 ms.
 - 100 concurrent duplicate confirmations: one applied event and stable ownership.
 - 30 overlapping expiry/payment races: 15 expired and 15 live holds; stale
   confirmation cannot take seats from a replacement booking.
@@ -127,20 +135,23 @@ The [report](sql/tests/bcnf-results.json) records a successful MySQL 8.4.9 run:
 - Nine negative constraint cases, invalid/duplicate seat requests,
   all four P2 cases, migration preservation, and restricted-client access passed.
 
-All 19 checks in the execution report passed.
+All 20 checks in the execution report passed.
 
 The suite asserts no duplicate show-seat ownership, no invalid inventory,
 no partial active bookings, no lost allocations, and no duplicate applied
-payment effects. Lock waits are observed in performance_schema. This is
-local correctness evidence with 64 workers, not 1,000 simultaneous connections
-or a claim of production throughput under every possible schedule.
+payment effects. Lock waits are observed in performance_schema. The benchmark
+used 64 worker threads, not 1,000 simultaneous connections. It launches one
+MySQL CLI process and TCP connection per request, so measurements include local
+process and connection startup overhead. Treat these figures as a reproducible
+local baseline, not production capacity or a universal comparison with an
+unimplemented optimistic strategy.
 
 ## Reproduce
 
 Use Python 3.12 and mysql CLI against an isolated test server:
 
 ```powershell
-python sql/tests/verify_bcnf.py --port 13307 --attempts 1000 --workers 64
+python sql/tests/verify_bcnf.py --port 13307 --attempts 1000 --workers 64 --benchmark-requests 1000
 ```
 
 Only the Python standard library is needed. Use --login-path for saved local

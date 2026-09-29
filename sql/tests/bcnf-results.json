@@ -1,5 +1,5 @@
 {
-  "schema": "bcnf_verify_80684d43a4894b9cb7d9a53990685dcd",
+  "schema": "bcnf_verify_29d5819091784dd79e48257a51676692",
   "tests": [
     {
       "name": "fresh BCNF schema and routines install",
@@ -35,11 +35,26 @@
       "passed": true,
       "successes": 1,
       "rejected": 999,
-      "seconds": 16.218
+      "seconds": 20.078
     },
     {
       "name": "losing holds roll back entire bookings",
       "passed": true
+    },
+    {
+      "name": "independent-seat booking throughput",
+      "passed": true,
+      "requests": 1000,
+      "workers": 64,
+      "successes": 1000,
+      "failures": 0,
+      "seconds": 20.806,
+      "requests_per_second": 48.06,
+      "latency_ms_p50": 1193.437,
+      "latency_ms_p95": 1870.94,
+      "latency_ms_p99": 2295.473,
+      "latency_ms_max": 4116.686,
+      "first_error": ""
     },
     {
       "name": "100 concurrent duplicate confirmations",
