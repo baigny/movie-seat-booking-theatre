@@ -1,6 +1,6 @@
 # Movie Seat Booking Theatre — P1 and P2 Plan
 
-Repository: https://github.com/baigny/data-modeling-movie-seat-booking-theatre
+Repository: https://github.com/baigny/movie-seat-booking-theatre
 
 ## Goal and submission
 
@@ -89,7 +89,7 @@ Redis service, or load-test implementation.
   and actual verification results. Review and finalize it after completion.
 - Validate the schema, migration, and transaction API together using
   sql/tests/verify_bcnf.py, and record actual execution results.
-- Push the initial setup to main in `baigny/data-modeling-movie-seat-booking-theatre`.
+- Push the initial setup to main in `baigny/movie-seat-booking-theatre`.
   Implement SQL on `feature/p1-p2-sql` and open a PR into main.
 
 ## References
