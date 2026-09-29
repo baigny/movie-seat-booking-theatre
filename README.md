@@ -5,6 +5,12 @@ Repository: [baigny/data-modeling-movie-seat-booking-theatre](https://github.com
 P1/P2 submission in preparation. See [PLAN.md](PLAN.md) for the agreed scope,
 implementation steps, verification, and references.
 
+The final [schema review](SCHEMA_REVIEW.md) completes the data dictionary,
+relationships, candidate keys, normalization analysis, and enforcement limits.
+The schema intentionally includes a BCNF exception in show_seats. Batch sections
+below retain the implementation history; current verification is summarized in
+the runtime and clean-database sections.
+
 ## Submission files
 
 - [sql/p1.sql](sql/p1.sql): all ten table definitions verified from user-provided
@@ -640,9 +646,12 @@ ten engines InnoDB, and these final row counts:
 
 This single-session run does not repeat the two-client locking test.
 
-## Remaining submission work
+## Broader concurrency checks
 
-Complete the final data dictionary and
-normalization review, add multi-seat atomicity and broader concurrent lifecycle
-coverage, and open the submission pull request. The show_seats normalization
-tradeoff above is explicit; passing runtime checks does not establish BCNF.
+The [committed-winner test](sql/tests/RACE_TESTS.md) is prepared in a separate
+generated schema. It checks that a losing two-seat request rolls back its partial
+claim after waiting for a winner to commit, and that replay cannot replace the
+winner's payment event. Follow its two-terminal sequence and report both PASS
+rows plus whether terminal B waited. Execution remains pending. This extends
+the timeout-only test; it does not simulate concurrent external webhook workers
+or expiry-versus-confirmation races.
