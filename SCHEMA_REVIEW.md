@@ -1,105 +1,94 @@
-# Schema and normalization review
+# BCNF schema review
 
-The executable definition is [sql/p1.sql](sql/p1.sql). README batch sections
-contain the dictionaries and example rows for the other eight tables; the
-two missing dictionaries are completed here. All amounts are INR. Every table
-uses InnoDB; foreign-key update and delete actions are RESTRICT.
+This review applies to the revised [P1 schema](sql/p1.sql): eleven base tables.
+Valid show inventory and current ownership are separate relations. No base
+table repeats the show determined by an allocation's booking.
 
-## Bookings and inventory dictionary
+## Attributes and constraints
 
-| Table | Column | Type | Meaning / constraint |
-| --- | --- | --- | --- |
-| bookings | booking_id | INT UNSIGNED | Auto-increment primary key |
-| bookings | user_id | INT UNSIGNED | Required FK to users |
-| bookings | screen_id | INT UNSIGNED | Required component of show FK |
-| bookings | starts_at | DATETIME | Required component of show FK |
-| bookings | booking_reference | CHAR(36) | Required unique reference |
-| bookings | status | ENUM | held (default), confirmed, expired, cancelled, payment_failed |
-| bookings | created_at | DATETIME | Required, defaults to CURRENT_TIMESTAMP |
-| bookings | hold_expires_at | DATETIME | Nullable except when held |
-| bookings | total_amount | DECIMAL(10,2) | Required, nonnegative; transaction reconciles with items |
-| show_seats | screen_id | INT UNSIGNED | Primary-key component, show/seat/booking FK component |
-| show_seats | starts_at | DATETIME | Primary-key component, show/booking FK component |
-| show_seats | row_label | VARCHAR(5) | Primary-key component, physical-seat FK component |
-| show_seats | seat_number | SMALLINT UNSIGNED | Primary-key component, physical-seat FK component |
-| show_seats | status | ENUM | available (default), held, sold |
-| show_seats | booking_id | INT UNSIGNED | NULL for available, required for held/sold |
+All columns are NOT NULL unless marked nullable. Integer IDs and seat numbers
+are UNSIGNED. All tables use InnoDB; foreign keys use RESTRICT on update/delete.
+Money is INR. Text defaults to utf8mb4_0900_ai_ci; payment identifiers use ascii_bin.
 
-bookings has unique (booking_id, screen_id, starts_at) for the composite
-inventory FK and index (user_id, created_at). Its show FK points to the unique
-(screen_id, starts_at) in shows. show_seats has indexes on
-(screen_id, starts_at, status, row_label, seat_number) and
-(booking_id, screen_id, starts_at). MySQL adds any further index required by an
-FK. The show-seat primary key prohibits double inventory rows; ownership and
-expiry transitions still require transactions.
-
-## Relationships
-
-| Parent | Child | Cardinality and enforcement |
+| Table | Attributes and types | Keys / rules |
 | --- | --- | --- |
-| theatres | screens | One to many, theatre_id FK |
-| screens | seats | One to many, screen_id FK |
-| screens | shows | One to many, screen_id FK |
-| movies | shows | One to many, movie_id FK |
-| users | bookings | One to many, user_id FK |
-| shows | bookings | One to many, screen/start FK |
-| shows | show_seats | One to many, screen/start FK |
-| seats | show_seats | One to many across shows, screen/row/number FK |
-| bookings | show_seats | Zero to many current allocations, nullable composite FK |
-| bookings | booking_seats | One to many historical items; a booking may temporarily have none |
-| bookings | payment_events | Zero to many, booking_id FK |
+| theatres | theatre_id INT; theatre_name VARCHAR(150); address VARCHAR(500) | Auto-increment PK theatre_id |
+| screens | screen_id INT; theatre_id INT; screen_name VARCHAR(50) | Auto-increment PK screen_id; unique theatre/name; theatre FK |
+| movies | movie_id INT; title VARCHAR(200); duration_minutes SMALLINT | Auto-increment PK movie_id; positive duration |
+| seats | seat_id INT; screen_id INT; row_label VARCHAR(5); seat_number SMALLINT | Auto-increment PK seat_id; unique screen/row/number; screen FK; positive number |
+| shows | show_id INT; movie_id INT; screen_id INT; starts_at DATETIME; ticket_price DECIMAL(10,2) | Auto-increment PK show_id; unique screen/start; movie/screen FKs; nonnegative price |
+| users | user_id INT; full_name VARCHAR(150); email VARCHAR(254) | Auto-increment PK user_id; unique email |
+| bookings | booking_id INT; user_id INT; screen_id INT; starts_at DATETIME; booking_reference CHAR(36); status ENUM; created_at DATETIME; hold_expires_at DATETIME nullable; total_amount DECIMAL(10,2) | Auto-increment PK booking_id; unique reference; user FK; screen/start FK to shows; nonnegative amount; held requires deadline |
+| show_seats | screen_id INT; starts_at DATETIME; row_label VARCHAR(5); seat_number SMALLINT | All four columns form PK; show FK on screen/start; physical-seat FK on screen/row/number |
+| seat_allocations | booking_id INT; row_label VARCHAR(5); seat_number SMALLINT | All three columns form PK; booking FK; positive number |
+| booking_seats | booking_id INT; row_label VARCHAR(5); seat_number SMALLINT; purchase_price DECIMAL(10,2) | PK booking/row/number; booking FK; positive number; nonnegative historical price |
+| payment_events | payment_event_id BIGINT; provider VARCHAR(50); provider_event_id VARCHAR(191); booking_id INT; event_type ENUM; amount DECIMAL(10,2); processing_status ENUM; received_at DATETIME; processed_at DATETIME nullable | Auto-increment PK event ID; unique provider/event; booking FK; nonnegative amount; pending iff processed_at is NULL |
 
-booking_seats deliberately omits the booking's show coordinates. Its FK proves
-the booking exists, but the transaction must validate each seat against that
-booking's inventory. Cancelled bookings retain their historical items while
-inventory can later belong to another booking.
+Booking statuses: held (default), confirmed, expired, cancelled, payment_failed.
+created_at defaults to CURRENT_TIMESTAMP. Event types: payment_succeeded,
+payment_failed, refund_succeeded. Processing states: pending (default), applied,
+ignored, refund_required. received_at defaults to CURRENT_TIMESTAMP.
+
+## Relationships and indexes
+
+A theatre has many screens; a screen has many physical seats and shows; each
+show has one movie. Bookings reference a customer and the show's unique
+(screen_id, starts_at) key. Inventory lists valid seats per show. Allocations
+derive their show through bookings. Historical booking items survive expiry
+while current allocations are released. A booking can have many payment events.
+
+Foreign keys and unique keys have supporting indexes. bookings also indexes
+(user_id, created_at); payment_events indexes (booking_id, received_at).
+The inventory primary key is the seat mutex. The shows screen/start key
+supports P2. Allocation checks join the show's bookings to their allocations
+through booking-leading keys. This normalized join has a cost; the report
+measures correctness locally rather than claiming production throughput.
 
 ## Functional dependencies and normal forms
 
-A candidate key is minimal; a unique key containing booking_id plus other
-columns is a superkey, not an additional candidate key. Atomic values establish
-1NF under this assignment's display-value treatment of addresses and names.
-The following analysis assumes no additional business dependencies beyond
-those stated, and email/string equality follows each column's collation.
+Addresses, names, prices, dates, and statuses are atomic display/business
+values (1NF). Names/titles/addresses are not assumed unique. Prices do not
+depend on movie alone. Email equality follows its collation. Historical item
+prices may differ within a booking, for example through discounts.
 
-| Table | Candidate keys / determinants | Review |
+| Relation | Candidate keys | Nontrivial dependencies |
 | --- | --- | --- |
-| theatres | theatre_id | Determines name/address; neither is assumed unique. BCNF, hence 1NF–3NF. |
-| screens | screen_id; (theatre_id, screen_name) | Either determines all columns; no partial dependency. BCNF. |
-| seats | seat_id; (screen_id, row_label, seat_number) | Either determines all columns; row and seat number repeat elsewhere. BCNF. |
-| movies | movie_id | Determines title/duration; title need not be unique. BCNF. |
-| shows | show_id; (screen_id, starts_at) | Either determines movie and price. BCNF; interval overlap is a separate scheduling rule. |
-| users | user_id; email | Either determines all columns. BCNF. |
-| bookings | booking_id; booking_reference | Either determines all booking facts. No partial/transitive dependencies under stated assumptions. BCNF. |
-| booking_seats | (booking_id, row_label, seat_number) | Full key determines historical purchase_price. Item prices can differ within a booking, e.g. discounts; BCNF. |
-| payment_events | payment_event_id; (provider, provider_event_id) | Either determines event facts. Processing state does not determine a timestamp value. BCNF. |
-| show_seats | (screen_id, starts_at, row_label, seat_number) | Full key determines status/owner. Allocated rows also have booking_id → screen_id, starts_at, although booking_id is not unique. Intentional BCNF exception. |
+| theatres | theatre_id | ID determines name/address |
+| screens | screen_id; theatre_id/screen_name | Either key determines all attributes |
+| movies | movie_id | ID determines title/duration |
+| seats | seat_id; screen_id/row_label/seat_number | Either key determines all attributes |
+| shows | show_id; screen_id/starts_at | Either key determines movie/price and other key columns |
+| users | user_id; email | Either key determines all attributes |
+| bookings | booking_id; booking_reference | Either key determines user, show, lifecycle facts and total |
+| show_seats | screen_id/starts_at/row_label/seat_number | All-key relation; no additional nontrivial dependencies |
+| seat_allocations | booking_id/row_label/seat_number | All-key relation; no additional nontrivial dependencies |
+| booking_seats | booking_id/row_label/seat_number | Complete key determines historical purchase_price |
+| payment_events | payment_event_id; provider/provider_event_id | Either key determines all event facts |
 
-For allocated inventory considered as a separate relation, another candidate
-key is (booking_id, row_label, seat_number). The dependency from booking_id to
-screen/start has prime attributes on its right-hand side; it violates BCNF
-but does not by itself violate 3NF. The actual SQL table also includes NULL
-owners for available inventory, so classical NULL-free normal-form analysis
-cannot simply be applied to that whole table without stating this distinction.
-Do not claim every table is strictly BCNF. A stricter decomposition could
-separate show inventory from current allocations and derive each allocation's
-show through bookings, but same-show integrity would then need a redesigned
-constraint or transaction scheme. That would be a schema migration, not a
-documentation correction, and is not made in this review.
+Every nontrivial determinant is a candidate key or superkey under these stated
+dependencies. Thus each base relation satisfies BCNF, and consequently 3NF and
+2NF, in addition to the atomic-value 1NF assumptions. Nullable timestamps
+represent absent lifecycle values; they do not introduce a non-key determinant.
 
-## Enforcement boundaries
+Previously show_seats repeated booking_id alongside screen/start. For allocated
+rows, booking_id determined the show without uniquely identifying an inventory
+row, violating BCNF. seat_allocations now omits those show coordinates. They
+exist in bookings, where booking_id IS a key. Ownership status is derived from
+bookings instead of being stored per seat. seat_availability is a joined view,
+not a base table, and does not reintroduce stored redundancy.
 
-Constraints cover references, seat/screen and booking/show consistency for
-inventory, unique provider events, and the documented CHECK conditions.
-They do not enforce all-or-none seat acquisition, item-total equality, booking
-status versus inventory status, expiry cleanup, show overlap, or refund delivery.
-Those require transactions or an application worker. The test procedures are
-executable examples; they are not installed production booking APIs.
+## Integrity boundary
 
-The nine constraint checks, six lifecycle checks, two-client lock exclusion,
-P2 filter cases, and fresh-schema replay have user-provided execution evidence.
-The committed-winner/partial-claim test also passed in assistant-run execution
-on isolated MySQL 8.4.9, with an actual lock wait observed before commit. The
-constraint and lifecycle scripts and P2 queries were also rerun successfully.
-Concurrent expiry-versus-confirmation, deadlock retries, and an actual external
-payment integration are not verified by these examples.
+Unique ownership across different bookings is enforced by the transaction API
+under an inventory-row lock, rather than by duplicating show coordinates in
+the allocation key. The API also validates inventory membership, complete
+item ownership, amount equality, and expiry. All failed holds roll back the
+entire request. Applications must have only SELECT and EXECUTE on the public
+routines, with no direct table DML and no access to the internal lock helper.
+The suite tests this privilege boundary. Administrators can bypass business
+rules through direct DML and are outside the client guarantee.
+
+Show schedules/layouts must remain stable while sales operate. Administrative
+rescheduling, external refunds, scheduling a cleanup worker, Redis, and queues
+are outside this revision. Concurrency correctness is documented with the
+actual test counts and limits in [README](README.md), not inferred from BCNF.

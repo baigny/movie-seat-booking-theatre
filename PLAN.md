@@ -26,7 +26,8 @@ Redis service, or load-test implementation.
 | movies | Movie titles and durations |
 | shows | Movie, screen, and scheduled start time |
 | users | Customers who book tickets |
-| show_seats | Inventory and current seat allocation for each show |
+| show_seats | Valid physical inventory for each show; no owner/status redundancy |
+| seat_allocations | BCNF current ownership; show derived through bookings |
 | bookings | Customer bookings, status, and hold expiry |
 | booking_seats | Seats associated with each booking |
 | payment_events | Payment event identifiers and processing outcomes |
@@ -86,10 +87,9 @@ Redis service, or load-test implementation.
   date-picker/showtime behavior without inventing extra UI requirements.
 - Update README.md after every implementation step with the changes, usage,
   and actual verification results. Review and finalize it after completion.
-- Add SQL in batches of two new SQL statements per implementation commit,
-  including the corresponding README update. Validate each batch, commit it,
-  then push it before starting the next batch. Setup/documentation-only commits
-  are separate; do not add dummy SQL to make a pair.
+- The initial schema was developed in two-statement batches. The requested BCNF
+  correction is a cohesive schema/migration/API revision, verified together by
+  sql/tests/verify_bcnf.py. It supersedes the original inventory design and tests.
 - Push the initial setup to main in `baigny/data-modeling-movie-seat-booking-theatre`.
   Implement SQL on `feature/p1-p2-sql` and open a PR into main.
 

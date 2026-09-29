@@ -1,7 +1,7 @@
 -- P1: MySQL schema and sample data.
 -- Target: MySQL 8.0.16+ with InnoDB.
 -- Batch 1: create and select the project database.
--- Tables and sample data will be added in subsequent batches.
+-- BCNF revision: inventory and current allocations are separate relations.
 
 CREATE DATABASE IF NOT EXISTS movie_seat_booking
     CHARACTER SET utf8mb4
@@ -133,7 +133,6 @@ CREATE TABLE bookings (
     total_amount DECIMAL(10,2) NOT NULL,
     PRIMARY KEY (booking_id),
     CONSTRAINT uq_bookings_reference UNIQUE (booking_reference),
-    CONSTRAINT uq_bookings_id_show UNIQUE (booking_id, screen_id, starts_at),
     KEY ix_bookings_user_created (user_id, created_at),
     CONSTRAINT chk_bookings_amount CHECK (total_amount >= 0),
     CONSTRAINT chk_bookings_hold_expiry CHECK (
@@ -152,23 +151,25 @@ CREATE TABLE show_seats (
     starts_at DATETIME NOT NULL,
     row_label VARCHAR(5) NOT NULL,
     seat_number SMALLINT UNSIGNED NOT NULL,
-    status ENUM('available', 'held', 'sold') NOT NULL DEFAULT 'available',
-    booking_id INT UNSIGNED NULL,
     PRIMARY KEY (screen_id, starts_at, row_label, seat_number),
-    KEY ix_show_seats_status (screen_id, starts_at, status, row_label, seat_number),
-    KEY ix_show_seats_booking (booking_id, screen_id, starts_at),
-    CONSTRAINT chk_show_seats_allocation CHECK (
-        (status = 'available' AND booking_id IS NULL)
-        OR (status IN ('held', 'sold') AND booking_id IS NOT NULL)
-    ),
     CONSTRAINT fk_show_seats_show FOREIGN KEY (screen_id, starts_at)
         REFERENCES shows (screen_id, starts_at)
         ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT fk_show_seats_seat FOREIGN KEY (screen_id, row_label, seat_number)
         REFERENCES seats (screen_id, row_label, seat_number)
-        ON DELETE RESTRICT ON UPDATE RESTRICT,
-    CONSTRAINT fk_show_seats_booking FOREIGN KEY (booking_id, screen_id, starts_at)
-        REFERENCES bookings (booking_id, screen_id, starts_at)
+        ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;
+
+-- A booking determines its show. Do not repeat that show in allocations.
+-- Only the transactional routines may write this table (see booking_api.sql).
+CREATE TABLE seat_allocations (
+    booking_id INT UNSIGNED NOT NULL,
+    row_label VARCHAR(5) NOT NULL,
+    seat_number SMALLINT UNSIGNED NOT NULL,
+    PRIMARY KEY (booking_id, row_label, seat_number),
+    CONSTRAINT chk_allocations_number CHECK (seat_number > 0),
+    CONSTRAINT fk_allocations_booking FOREIGN KEY (booking_id)
+        REFERENCES bookings (booking_id)
         ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB;
 
@@ -222,19 +223,14 @@ INSERT INTO bookings (
 );
 
 INSERT INTO show_seats (
-    screen_id, starts_at, row_label, seat_number, status, booking_id
+    screen_id, starts_at, row_label, seat_number
 )
-SELECT sh.screen_id, sh.starts_at, st.row_label, st.seat_number,
-       CASE WHEN b.booking_id IS NOT NULL THEN 'sold' ELSE 'available' END,
-       b.booking_id
+SELECT sh.screen_id, sh.starts_at, st.row_label, st.seat_number
 FROM shows AS sh
-JOIN seats AS st ON st.screen_id = sh.screen_id
-LEFT JOIN bookings AS b
-    ON b.booking_id = 1
-    AND b.screen_id = sh.screen_id
-    AND b.starts_at = sh.starts_at
-    AND st.row_label = 'A'
-    AND st.seat_number IN (1, 2);
+JOIN seats AS st ON st.screen_id = sh.screen_id;
+
+INSERT INTO seat_allocations (booking_id, row_label, seat_number)
+VALUES (1, 'A', 1), (1, 'A', 2);
 
 -- Batch 11: historical items and payment for booking 1 (run once).
 INSERT INTO booking_seats (booking_id, row_label, seat_number, purchase_price)

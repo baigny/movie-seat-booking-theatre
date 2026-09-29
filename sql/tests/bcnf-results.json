@@ -1,0 +1,97 @@
+{
+  "schema": "bcnf_verify_80684d43a4894b9cb7d9a53990685dcd",
+  "tests": [
+    {
+      "name": "fresh BCNF schema and routines install",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "name": "sample allocations and item ownership",
+      "passed": true
+    },
+    {
+      "name": "inventory contains only candidate-key attributes",
+      "passed": true
+    },
+    {
+      "name": "nine revised constraint rejection cases",
+      "passed": true
+    },
+    {
+      "name": "P2 unchanged default output",
+      "passed": true
+    },
+    {
+      "name": "P2 alternate theatre date and empty result",
+      "passed": true
+    },
+    {
+      "name": "invalid seat, duplicate request, past show rejected",
+      "passed": true
+    },
+    {
+      "name": "overlapping two-seat contention",
+      "passed": true,
+      "successes": 1,
+      "rejected": 999,
+      "seconds": 16.218
+    },
+    {
+      "name": "losing holds roll back entire bookings",
+      "passed": true
+    },
+    {
+      "name": "100 concurrent duplicate confirmations",
+      "passed": true
+    },
+    {
+      "name": "replayed event payload mismatch rejected",
+      "passed": true
+    },
+    {
+      "name": "30 overlapping expiry/payment races and stale replays",
+      "passed": true,
+      "expired_cases": 15,
+      "live_cases": 15
+    },
+    {
+      "name": "hold expires while payment waits",
+      "passed": true
+    },
+    {
+      "name": "lock timeout rolls back and full request retry succeeds",
+      "passed": true
+    },
+    {
+      "name": "real deadlock victim retried as a whole transaction",
+      "passed": true,
+      "retries": [
+        1213
+      ]
+    },
+    {
+      "name": "existing-schema migration executes",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "name": "migration preserves inventory allocations and history",
+      "passed": true
+    },
+    {
+      "name": "transaction routines install after migration",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "name": "restricted client can hold but cannot bypass routines",
+      "passed": true,
+      "error": ""
+    }
+  ],
+  "attempts": 1000,
+  "workers": 64,
+  "mysql_version": "8.4.9",
+  "passed": true
+}
