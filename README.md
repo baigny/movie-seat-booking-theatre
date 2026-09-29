@@ -10,7 +10,7 @@ implementation steps, verification, and references.
 - [sql/p1.sql](sql/p1.sql): all ten table definitions verified from user-provided
   MySQL output through batch 9. All ten tables now have sample data verified
   through batch 11. Nine constraint checks, row-lock exclusion, and six lifecycle
-  checks passed; broader concurrency coverage and a clean-database run remain.
+  checks passed, including a clean-database run; broader concurrency coverage remains.
 - [sql/p2.sql](sql/p2.sql): default output, alternate theatre/date inputs, and
   empty-result behavior verified from user-provided MySQL output.
 
@@ -320,13 +320,17 @@ held or sold inventory must reference a booking for the same show. The status
 index supports finding and locking requested seats in a deterministic order.
 
 Candidate keys: `booking_id` and `booking_reference` identify a booking;
-`(booking_id, screen_id, starts_at)` is an alternate composite key for enforcing
+`(booking_id, screen_id, starts_at)` is a redundant unique superkey for enforcing
 show-consistent allocations. The show-seat primary key identifies an inventory
 row. In bookings, each non-key attribute depends on a candidate key, with no
-partial or transitive dependencies. In show_seats, availability and booking
-allocation depend on the full show/seat key. Values are atomic and no
-nontrivial dependency has a non-key determinant; both tables satisfy 1NF through
-BCNF under these assumptions.
+partial or transitive dependencies; bookings satisfies BCNF under these
+assumptions. In show_seats, availability and booking allocation depend on the
+full show/seat key. For allocated rows, booking_id also determines screen_id
+and starts_at through bookings, although booking_id is not an inventory key.
+This intentionally repeats the booking's show coordinates to enforce same-show
+allocation with a composite foreign key. Accordingly, show_seats should not be
+claimed to satisfy BCNF without qualification; it trades strict normalization
+for declarative allocation integrity. NULL ownership represents free inventory.
 
 Run only the two CREATE TABLE statements under Batch 8 after batch 7. Verify
 using `SHOW CREATE TABLE bookings`, `SHOW CREATE TABLE show_seats`, and the
@@ -597,8 +601,48 @@ documents importing schema.sql and queries.sql through the MySQL command-line
 client. Its schema explicitly uses InnoDB. We will use the same file-based
 workflow with our own independently validated SQL and record actual results.
 
-## Remaining documentation
+## Clean-database verification
 
-The completed submission will include a table-by-table data dictionary,
-relationships, example rows, normalization reasoning through BCNF, concurrency
-transaction examples, execution instructions, and actual verification results.
+Status: verified from user-provided MySQL output on 2026-09-29 in the fresh
+schema movie_verify_905763b6db41489e8439e391d1ec02c4. No errors were reported.
+P1 creation and inserts completed, all four P2 cases matched, constraint tests
+passed 9/9, and lifecycle tests passed 6/6. B1 returned to available / NULL.
+All ten final row counts matched the table below and every table used InnoDB.
+The script completed its final switch back to the project database.
+
+To prepare another independent run, from PowerShell in the repository run
+`./sql/tests/prepare_clean_run.ps1`. It generates an ignored SQL file with a
+fresh GUID-based schema name, replacing only the project schema references.
+The copy executes P1, P2, the alternate P2 filters, nine constraint checks, and
+six lifecycle checks. It then reports table counts and engines and switches
+back to movie_seat_booking. The original database and source SQL are preserved.
+The generated copy uses CREATE DATABASE without IF NOT EXISTS; run it once.
+If any error occurs, retain the output and stop verification; do not interpret
+later output as proof that earlier statements succeeded. Generate a new file
+for a fresh attempt. The verification schema is retained for inspection.
+
+At the mysql prompt, execute the SOURCE command printed by the generator.
+Expect the four previously verified P2 result sets, PASS counts 9 and 6, all
+ten engines InnoDB, and these final row counts:
+
+| Table | Rows |
+| --- | --- |
+| theatres | 2 |
+| screens | 3 |
+| movies | 3 |
+| seats | 8 |
+| shows | 10 |
+| users | 2 |
+| bookings | 1 |
+| show_seats | 36 |
+| booking_seats | 2 |
+| payment_events | 1 |
+
+This single-session run does not repeat the two-client locking test.
+
+## Remaining submission work
+
+Complete the final data dictionary and
+normalization review, add multi-seat atomicity and broader concurrent lifecycle
+coverage, and open the submission pull request. The show_seats normalization
+tradeoff above is explicit; passing runtime checks does not establish BCNF.
