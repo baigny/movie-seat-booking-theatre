@@ -235,3 +235,17 @@ LEFT JOIN bookings AS b
     AND b.starts_at = sh.starts_at
     AND st.row_label = 'A'
     AND st.seat_number IN (1, 2);
+
+-- Batch 11: historical items and payment for booking 1 (run once).
+INSERT INTO booking_seats (booking_id, row_label, seat_number, purchase_price)
+VALUES
+    (1, 'A', 1, 200.00),
+    (1, 'A', 2, 200.00);
+
+INSERT INTO payment_events (
+    payment_event_id, provider, provider_event_id, booking_id, event_type,
+    amount, processing_status, received_at, processed_at
+) VALUES (
+    1, 'demo_provider', 'evt_demo_001', 1, 'payment_succeeded',
+    400.00, 'applied', '2026-09-27 18:05:00', '2026-09-27 18:05:01'
+);

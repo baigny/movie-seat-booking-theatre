@@ -8,8 +8,8 @@ implementation steps, verification, and references.
 ## Submission files
 
 - [sql/p1.sql](sql/p1.sql): all ten table definitions verified from user-provided
-  MySQL output through batch 9. Sample data is verified for the first six tables;
-  batch 10 booking and inventory sample data is also verified.
+  MySQL output through batch 9. All ten tables now have sample data verified
+  through batch 11; runtime constraint and concurrency tests remain pending.
 - [sql/p2.sql](sql/p2.sql): shows by theatre and date (pending).
 
 ## Target database
@@ -435,6 +435,38 @@ Expected results with the unchanged earlier fixtures:
 Run only Batch 10's two INSERT statements in movie_seat_booking; do not source
 the full p1.sql or rerun successful inserts. Verify the booking row, total and
 status counts, sold seat details, and inventory counts grouped by show.
+
+## SQL batch 11: Sample booking items and successful payment
+
+Status: verified from user-provided MySQL output. The booking item INSERT
+affected two rows with zero duplicates and warnings; the payment event INSERT
+affected one row. SELECT results matched every inserted field, including both
+INR 200.00 seat prices, the INR 400.00 applied payment, and its timestamps.
+The item sum and booking total both returned INR 400.00. The inventory join
+confirmed A1 and A2 are sold to booking 1. Runtime constraint rejection,
+payment idempotency, and concurrency tests remain pending.
+Adds exactly two INSERT statements, to be run once after batch 10.
+
+The first adds booking 1's historical items: A1 and A2 at INR 200.00 each.
+Their INR 400.00 total matches bookings.total_amount, and both positions match
+the inventory sold to that booking on screen 1 at 2026-09-28 10:00:00.
+
+The second adds a fictional payment event with payment_event_id 1, provider
+demo_provider, provider_event_id evt_demo_001, and booking_id 1. Its event_type
+is payment_succeeded, amount is INR 400.00, and processing_status is applied.
+received_at is 2026-09-27 18:05:00 and processed_at is 2026-09-27 18:05:01,
+both before the retained hold deadline. These fixed timestamps describe the
+historical fixture independently of the date on which the script is executed.
+No external payment is made. Inserting an applied event is sample data, not
+proof of idempotent processing or safe concurrent confirmation; those tests
+and transaction examples remain pending.
+
+All ten tables now have verified sample data. Expect two
+booking_seats rows and one payment_events row. Verify every inserted field,
+compare the item sum and payment amount to the booking total, and join items
+through the booking's screen/start to show_seats to confirm both are sold to
+booking 1. Do not rerun successful inserts or source the complete p1.sql into
+the populated database.
 
 ## Reference execution workflow
 
