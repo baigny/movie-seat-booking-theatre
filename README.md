@@ -9,7 +9,8 @@ implementation steps, verification, and references.
 
 - [sql/p1.sql](sql/p1.sql): all ten table definitions verified from user-provided
   MySQL output through batch 9. All ten tables now have sample data verified
-  through batch 11; runtime constraint and concurrency tests remain pending.
+  through batch 11. Nine constraint checks, row-lock exclusion, and six lifecycle
+  checks passed; broader concurrency coverage and a clean-database run remain.
 - [sql/p2.sql](sql/p2.sql): shows by theatre and date (pending).
 
 ## Target database
@@ -467,6 +468,77 @@ compare the item sum and payment amount to the booking total, and join items
 through the booking's screen/start to show_seats to confirm both are sold to
 booking 1. Do not rerun successful inserts or source the complete p1.sql into
 the populated database.
+
+## P1 runtime verification
+
+Status: all nine constraint rejection tests passed, verified from user-provided
+MySQL output showing PASS: constraint rejection tests and tests_passed = 9.
+The procedure call and cleanup completed without reported unhandled errors.
+Two-session row-lock exclusion also passed from user-provided output: session A
+selected B1 with FOR UPDATE, session B's competing UPDATE received error 1205,
+and B's final SELECT returned available / NULL after rollback. The later lifecycle
+test acquired B1 successfully, showing the earlier lock no longer blocked it.
+All six single-session lifecycle protocol checks also passed from user-provided
+output; B1 returned to available / NULL after rollback. Diagnostic test
+statements are separate from the two-statement implementation batches.
+
+From the logged-in mysql prompt, run:
+
+```text
+SOURCE C:/data-modelling-movie-theatre/sql/tests/p1_constraints.sql;
+```
+
+Expect a PASS result with tests_passed = 9 and no unhandled errors. The script
+checks an orphan foreign key, duplicate inventory, wrong-screen seat,
+wrong-show booking allocation, sold inventory without an owner, a held booking
+without expiry, negative item price, duplicate payment event, and an applied
+event without its processing timestamp. Expected error numbers are handled
+inside a test procedure; an unexpected error aborts the procedure and rolls
+back. The procedure is removed afterward. Test writes are rolled back, although
+auto-increment counters may advance. Requires CREATE ROUTINE and EXECUTE access.
+
+For the two-session lock exclusion test, open two independent mysql clients.
+Run sql/tests/p1_lock_session_a.sql in A, keeping that connection open. Confirm
+it selected available B1 with NULL booking_id. Then run
+sql/tests/p1_lock_session_b.sql in B. Its UPDATE must receive error 1205 after
+about three seconds; the final SELECT must show available / NULL. Run ROLLBACK
+in A afterward. B rolls back and restores its previous lock timeout itself.
+This proves exclusion while A holds a row lock; it does not yet prove the full
+booking, hold-expiry, stale-confirmation, or payment-idempotency protocol.
+The single-session lifecycle checks below complement this lock exclusion test;
+broader concurrent lifecycle races and multi-seat atomicity remain unverified.
+
+### Hold expiry, stale confirmation, and payment replay tests
+
+Status: verified from user-provided MySQL output. sql/tests/p1_lifecycle.sql
+returned PASS: lifecycle protocol tests with tests_passed = 6 and no reported
+unhandled errors. The final B1 row was available with NULL booking_id.
+First run ROLLBACK in session A from the locking test, then source this file
+in one logged-in MySQL session. Expect PASS: lifecycle protocol tests with
+tests_passed = 6, followed by B1 available / NULL after rollback.
+
+The procedure creates two temporary booking records within its transaction and
+locks B1. It tests expired-hold cleanup, reassignment to a new owner, rejection
+of stale confirmation with a refund_required event, valid owner confirmation,
+duplicate provider-event rejection, and repeated confirmation as a no-op.
+All data changes roll back on success or an unhandled error; generated IDs may
+leave gaps. The procedure itself is removed after the call. It uses the past
+fixture show intentionally to isolate hold lifecycle behavior; live sales must
+also reject shows that have already started.
+
+These are executable protocol examples, not tests of an application service:
+this project has no booking service or webhook handler. The refund outcome is
+recorded directly; no external refund is executed. This single-session script
+does not establish safety for every concurrent lifecycle race. Existing booking
+rows must be locked before inventory rows, with multiple booking IDs and seat
+keys locked in consistent order across confirmation and cleanup. Multi-seat
+operations must check that every requested seat was updated and roll back the
+whole transaction on a count mismatch. Duplicate event handling must skip
+effects after checking the original event's booking and amount; a distinct
+payment for an already confirmed booking requires reconciliation rather than
+another seat allocation. Scheduled cleanup must recheck expiry and ownership
+under those same locks. Further multi-seat and concurrent lifecycle coverage
+remains pending; do not infer production readiness from these six checks.
 
 ## Reference execution workflow
 
