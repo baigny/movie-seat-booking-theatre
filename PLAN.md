@@ -87,9 +87,8 @@ Redis service, or load-test implementation.
   date-picker/showtime behavior without inventing extra UI requirements.
 - Update README.md after every implementation step with the changes, usage,
   and actual verification results. Review and finalize it after completion.
-- The initial schema was developed in two-statement batches. The requested BCNF
-  correction is a cohesive schema/migration/API revision, verified together by
-  sql/tests/verify_bcnf.py. It supersedes the original inventory design and tests.
+- Validate the schema, migration, and transaction API together using
+  sql/tests/verify_bcnf.py, and record actual execution results.
 - Push the initial setup to main in `baigny/data-modeling-movie-seat-booking-theatre`.
   Implement SQL on `feature/p1-p2-sql` and open a PR into main.
 

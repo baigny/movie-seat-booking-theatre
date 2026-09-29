@@ -1,4 +1,4 @@
--- Run ONCE on the old schema, with application writes stopped and a backup.
+-- Run ONCE on a compatible ten-table schema, with writes stopped and a backup.
 -- MySQL DDL commits implicitly. Stop on the first error; do not use --force.
 -- Existing sample/user rows are preserved; install booking_api.sql afterward.
 USE movie_seat_booking;

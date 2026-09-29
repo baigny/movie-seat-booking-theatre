@@ -1,9 +1,9 @@
 # Movie theatre booking — P1 and P2
 
 Executable MySQL schema, sample data, showtime query, and transaction tests.
-This revision addresses **strict BCNF** and **stronger concurrency evidence**.
+The schema follows **BCNF** and includes **concurrency verification**.
 Redis, queues, an HTTP backend, external payments, and automatic scheduling
-are outside this revision's requested scope.
+are outside the project's scope.
 
 ## Files
 
@@ -14,7 +14,7 @@ are outside this revision's requested scope.
   and the derived seat_availability view.
 - [P2](sql/p2.sql): theatre/date showtime query.
 - [Test suite](sql/tests/verify_bcnf.py) and [execution report](sql/tests/bcnf-results.json).
-- [Migration](sql/migrations/001_bcnf_allocations.sql): old ten-table schema to BCNF.
+- [Migration](sql/migrations/001_bcnf_allocations.sql): allocation-table conversion for compatible existing databases.
 
 ## Installation
 
@@ -33,9 +33,9 @@ normal server has not been migrated by the isolated tests. To upgrade it:
 back it up, stop application writes, run the migration once, then install
 booking_api.sql. Use mysql batch input that aborts on errors, without --force;
 DDL commits implicitly, so inspect a partially failed migration rather than
-rerunning blindly. Migration preflight rejects inconsistent old allocations.
-Migration and routine installation were verified on a copy of the previous
-committed sample schema; the original database remains unchanged.
+rerunning blindly. Migration preflight rejects inconsistent allocations.
+Migration and routine installation were verified against the compatible
+sample schema; verification runs do not modify your existing database.
 
 Applications must use the grants in [application_role.sql](sql/application_role.sql):
 SELECT plus EXECUTE on hold_seats, confirm_payment, and expire_booking only.
@@ -122,7 +122,7 @@ The [report](sql/tests/bcnf-results.json) records a successful MySQL 8.4.9 run:
   confirmation cannot take seats from a replacement booking.
 - Expiry while waiting for a lock, timeout rollback/retry, and an actual
   deadlock victim followed by whole-transaction retry all passed.
-- Nine revised negative constraint cases, invalid/duplicate seat requests,
+- Nine negative constraint cases, invalid/duplicate seat requests,
   P2 default output, migration preservation, and restricted-client access passed.
 
 The suite asserts no duplicate show-seat ownership, no invalid inventory,
@@ -144,7 +144,6 @@ credentials. The suite creates GUID-named schemas and leaves them for inspection
 it never drops or overwrites an application database. Administrative test access
 is required to create routines, observe locks, and create/remove a temporary
 restricted account. Passwords are not stored in this repository. The migration
-test reads the prior schema from Git commit a2153ef.
+test uses the compatibility fixture from Git commit a2153ef.
 
-The previous denormalized-schema tests are superseded and removed. The single
-integration suite and its JSON report are the current verification source.
+The integration suite and its JSON report provide the execution evidence.

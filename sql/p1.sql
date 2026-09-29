@@ -1,7 +1,7 @@
 -- P1: MySQL schema and sample data.
 -- Target: MySQL 8.0.16+ with InnoDB.
 -- Batch 1: create and select the project database.
--- BCNF revision: inventory and current allocations are separate relations.
+-- Inventory and current allocations are separate BCNF relations.
 
 CREATE DATABASE IF NOT EXISTS movie_seat_booking
     CHARACTER SET utf8mb4

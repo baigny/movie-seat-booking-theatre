@@ -154,7 +154,7 @@ def main():
       ("UPDATE payment_events SET processed_at=NULL WHERE payment_event_id=1;", 'ERROR 3819')]
     for sql, marker in constraint_cases:
         fail_expected(sql, marker)
-    check('nine revised constraint rejection cases', invariant())
+    check('nine constraint rejection cases', invariant())
     p2 = (ROOT / 'sql/p2.sql').read_text().replace('movie_seat_booking', schema)
     p2out = raw(p2)
     check('P2 unchanged default output', p2out.returncode == 0 and len(p2out.stdout.strip().splitlines()) == 3)

@@ -1,6 +1,6 @@
 # BCNF schema review
 
-This review applies to the revised [P1 schema](sql/p1.sql): eleven base tables.
+The [P1 schema](sql/p1.sql) contains eleven base tables.
 Valid show inventory and current ownership are separate relations. No base
 table repeats the show determined by an allocation's booking.
 
@@ -70,10 +70,8 @@ dependencies. Thus each base relation satisfies BCNF, and consequently 3NF and
 2NF, in addition to the atomic-value 1NF assumptions. Nullable timestamps
 represent absent lifecycle values; they do not introduce a non-key determinant.
 
-Previously show_seats repeated booking_id alongside screen/start. For allocated
-rows, booking_id determined the show without uniquely identifying an inventory
-row, violating BCNF. seat_allocations now omits those show coordinates. They
-exist in bookings, where booking_id IS a key. Ownership status is derived from
+seat_allocations stores booking and seat identifiers. Show coordinates
+exist in bookings, where booking_id is a key. Ownership status is derived from
 bookings instead of being stored per seat. seat_availability is a joined view,
 not a base table, and does not reintroduce stored redundancy.
 
@@ -90,5 +88,5 @@ rules through direct DML and are outside the client guarantee.
 
 Show schedules/layouts must remain stable while sales operate. Administrative
 rescheduling, external refunds, scheduling a cleanup worker, Redis, and queues
-are outside this revision. Concurrency correctness is documented with the
+are outside the project's scope. Concurrency correctness is documented with the
 actual test counts and limits in [README](README.md), not inferred from BCNF.
