@@ -1,3 +1,0 @@
--- P1: MySQL schema and sample data.
--- Status: scaffold only. Implementation follows PLAN.md.
--- Target: MySQL 8.0.16+ with InnoDB.
