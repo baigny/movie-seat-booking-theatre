@@ -1,0 +1,116 @@
+{
+  "schema": "bcnf_verify_b5358be0df5349c1a8215d7d0d0ab9d4",
+  "tests": [
+    {
+      "name": "fresh BCNF schema and routines install",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "name": "sample allocations and item ownership",
+      "passed": true
+    },
+    {
+      "name": "inventory contains only candidate-key attributes",
+      "passed": true
+    },
+    {
+      "name": "nine constraint rejection cases",
+      "passed": true
+    },
+    {
+      "name": "P2 exact default output",
+      "passed": true
+    },
+    {
+      "name": "P2 alternate theatre date and empty result",
+      "passed": true
+    },
+    {
+      "name": "P2 includes both day boundaries and excludes next midnight",
+      "passed": true
+    },
+    {
+      "name": "invalid seat, duplicate request, past show rejected",
+      "passed": true
+    },
+    {
+      "name": "nine malformed seat values rejected before coercion",
+      "passed": true
+    },
+    {
+      "name": "overlapping two-seat contention",
+      "passed": true,
+      "successes": 1,
+      "rejected": 999,
+      "seconds": 21.313
+    },
+    {
+      "name": "losing holds roll back entire bookings",
+      "passed": true
+    },
+    {
+      "name": "independent-seat booking throughput",
+      "passed": true,
+      "requests": 1000,
+      "workers": 64,
+      "successes": 1000,
+      "failures": 0,
+      "seconds": 20.06,
+      "requests_per_second": 49.85,
+      "latency_ms_p50": 1126.653,
+      "latency_ms_p95": 1809.963,
+      "latency_ms_p99": 2416.709,
+      "latency_ms_max": 2941.677,
+      "first_error": ""
+    },
+    {
+      "name": "100 concurrent duplicate confirmations",
+      "passed": true
+    },
+    {
+      "name": "replayed event payload mismatch rejected",
+      "passed": true
+    },
+    {
+      "name": "30 overlapping expiry/payment races and stale replays",
+      "passed": true,
+      "expired_cases": 15,
+      "live_cases": 15
+    },
+    {
+      "name": "hold expires while payment waits",
+      "passed": true
+    },
+    {
+      "name": "lock timeout rolls back and full request retry succeeds",
+      "passed": true
+    },
+    {
+      "name": "real deadlock victim retried as a whole transaction",
+      "passed": true,
+      "retries": [
+        1213
+      ]
+    },
+    {
+      "name": "restricted client can hold but cannot bypass routines",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "name": "optional expiry event installs disabled",
+      "passed": true,
+      "error": ""
+    },
+    {
+      "name": "scheduler automatically releases expired hold and preserves live and sold seats",
+      "passed": true
+    }
+  ],
+  "attempts": 1000,
+  "workers": 64,
+  "mysql_version": "8.4.9",
+  "event_execution_tested": true,
+  "passed": true
+}
